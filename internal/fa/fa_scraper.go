@@ -16,10 +16,9 @@ import (
 
 type (
 	FurAffinityCollector struct {
-		LimitConcurrency  int
-		WithContent       bool
-		UserID            uint
-		faDefaultLocation *time.Location
+		LimitConcurrency int
+		WithContent      bool
+		UserID           uint
 	}
 	FurAffinityUser struct {
 		Name       string
@@ -48,15 +47,12 @@ const faTimezone = "America/Los_Angeles"
 const faNoteSeparator = "—————————"
 
 var (
-	furaffinityBaseUrl, _ = url.Parse(faBaseUrl)
+	furaffinityBaseUrl, _         = url.Parse(faBaseUrl)
+	furaffinityDefaultLocation, _ = time.LoadLocation(faTimezone)
 )
 
 func (nc *FurAffinityCollector) notesDateLocation() *time.Location {
-	if nc.faDefaultLocation == nil {
-		nc.faDefaultLocation, _ = time.LoadLocation(faTimezone)
-	}
-
-	return nc.faDefaultLocation
+	return furaffinityDefaultLocation
 }
 
 func (nc *FurAffinityCollector) configuredCollector() *colly.Collector {
