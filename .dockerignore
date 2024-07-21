@@ -1,0 +1,10 @@
+.git
+.idea
+bin
+*.exe
+*.pem
+*.key
+secret/
+data/
+.github
+.env
