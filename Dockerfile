@@ -20,6 +20,7 @@ RUN make build
 FROM alpine
 ARG WORKDIR
 ENV APP_ENV production
+RUN apk --no-cache add ca-certificates tzdata
 WORKDIR $WORKDIR
 COPY --from=builder $WORKDIR/bin/fa-notifier .
 
