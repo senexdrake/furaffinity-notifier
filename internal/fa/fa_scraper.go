@@ -79,14 +79,11 @@ func (nc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteSummary {
 		e.ForEach(".note-list-container", func(i int, e *colly.HTMLElement) {
 			if guardChannel != nil {
 				guardChannel <- struct{}{}
+				defer func() { <-guardChannel }()
 			}
 			parsed := nc.parseNoteSummary(e)
 			if parsed != nil {
 				noteChannel <- parsed
-			}
-
-			if guardChannel != nil {
-				<-guardChannel
 			}
 		})
 	})
@@ -136,10 +133,12 @@ func (nc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteSummary {
 			guardChannel <- struct{}{}
 			wg.Add(1)
 			go func() {
+				defer func() {
+					<-guardChannel
+					wg.Done()
+				}()
 				note.Content = nc.GetNoteContent(note.ID)
 				channel <- note
-				<-guardChannel
-				wg.Done()
 			}()
 		}
 
