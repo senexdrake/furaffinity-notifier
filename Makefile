@@ -15,7 +15,7 @@ ifeq ($(GOOS), windows)
 endif
 
 build:
-	go build -tags $(GO_TAGS) -o bin/$(EXECUTABLE_NAME) --ldflags="$(LD_FLAGS)"
+	CGO_ENABLED=1 go build -tags $(GO_TAGS) -o bin/$(EXECUTABLE_NAME) --ldflags="$(LD_FLAGS)"
 
 deps:
 	go mod download && go mod verify
