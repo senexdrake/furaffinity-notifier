@@ -65,7 +65,7 @@ func UpdateJob() {
 
 	// Do checks synchronously for now to prevent any massive rate limiting
 	for _, user := range users {
-		c := fa.NewNotesCollector(user.ID)
+		c := fa.NewCollector(user.ID)
 		c.LimitConcurrency = 4
 		c.WithContent = true
 

@@ -15,11 +15,11 @@ import (
 )
 
 type (
-	NotesCollector struct {
-		c                *colly.Collector
-		LimitConcurrency int
-		WithContent      bool
-		UserID           uint
+	FurAffinityCollector struct {
+		LimitConcurrency  int
+		WithContent       bool
+		UserID            uint
+		faDefaultLocation *time.Location
 	}
 	FurAffinityUser struct {
 		Name       string
@@ -44,13 +44,22 @@ type (
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
 const faBaseUrl = "https://www.furaffinity.net"
 const faDateLayout = "Jan 2, 2006 03:04PM"
+const faTimezone = "America/Los_Angeles"
 const faNoteSeparator = "—————————"
 
 var (
 	furaffinityBaseUrl, _ = url.Parse(faBaseUrl)
 )
 
-func (nc *NotesCollector) configuredCollector() *colly.Collector {
+func (nc *FurAffinityCollector) notesDateLocation() *time.Location {
+	if nc.faDefaultLocation == nil {
+		nc.faDefaultLocation, _ = time.LoadLocation(faTimezone)
+	}
+
+	return nc.faDefaultLocation
+}
+
+func (nc *FurAffinityCollector) configuredCollector() *colly.Collector {
 	c := colly.NewCollector(
 		colly.UserAgent(userAgent),
 		colly.Async(true),
@@ -61,7 +70,7 @@ func (nc *NotesCollector) configuredCollector() *colly.Collector {
 	return c
 }
 
-func (nc *NotesCollector) GetNotes(page uint) <-chan *NoteSummary {
+func (nc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteSummary {
 	var guardChannel chan struct{}
 	if nc.LimitConcurrency > 0 {
 		guardChannel = make(chan struct{}, nc.LimitConcurrency)
@@ -75,7 +84,7 @@ func (nc *NotesCollector) GetNotes(page uint) <-chan *NoteSummary {
 			if guardChannel != nil {
 				guardChannel <- struct{}{}
 			}
-			parsed := parseNoteSummary(e)
+			parsed := nc.parseNoteSummary(e)
 			if parsed != nil {
 				noteChannel <- parsed
 			}
@@ -99,7 +108,7 @@ func (nc *NotesCollector) GetNotes(page uint) <-chan *NoteSummary {
 	return noteChannel
 }
 
-func (nc *NotesCollector) GetNewNotes() <-chan *NoteSummary {
+func (nc *FurAffinityCollector) GetNewNotes() <-chan *NoteSummary {
 	newNotes := make(chan *NoteSummary)
 
 	allNotes := nc.GetNotes(1)
@@ -116,7 +125,7 @@ func (nc *NotesCollector) GetNewNotes() <-chan *NoteSummary {
 	return newNotes
 }
 
-func (nc *NotesCollector) GetNewNotesWithContent() <-chan *NoteSummary {
+func (nc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteSummary {
 	channel := make(chan *NoteSummary)
 	go func() {
 		concurrencyLimit := nc.LimitConcurrency
@@ -145,7 +154,7 @@ func (nc *NotesCollector) GetNewNotesWithContent() <-chan *NoteSummary {
 	return channel
 }
 
-func (nc *NotesCollector) GetNoteContents(notes []uint) map[uint]*NoteContent {
+func (nc *FurAffinityCollector) GetNoteContents(notes []uint) map[uint]*NoteContent {
 	contentMap := make(map[uint]*NoteContent, len(notes))
 	for _, note := range notes {
 		content := nc.GetNoteContent(note)
@@ -156,7 +165,7 @@ func (nc *NotesCollector) GetNoteContents(notes []uint) map[uint]*NoteContent {
 	return contentMap
 }
 
-func (nc *NotesCollector) GetNoteContent(note uint) *NoteContent {
+func (nc *FurAffinityCollector) GetNoteContent(note uint) *NoteContent {
 	c := nc.configuredCollector()
 
 	channel := make(chan *NoteContent)
@@ -193,7 +202,7 @@ func (nc *NotesCollector) GetNoteContent(note uint) *NoteContent {
 	return <-channel
 }
 
-func (nc *NotesCollector) cookies() map[string]*http.Cookie {
+func (nc *FurAffinityCollector) cookies() map[string]*http.Cookie {
 	cookies := make([]database.UserCookie, 0)
 	database.Db().Where(&database.UserCookie{UserID: nc.UserID}).Find(&cookies)
 
@@ -204,7 +213,7 @@ func (nc *NotesCollector) cookies() map[string]*http.Cookie {
 	return cookieMap
 }
 
-func (nc *NotesCollector) notesCookies() []*http.Cookie {
+func (nc *FurAffinityCollector) notesCookies() []*http.Cookie {
 	cookieMap := maps.Clone(nc.cookies())
 	cookieMap["folder"] = &http.Cookie{
 		Value: "inbox",
@@ -218,9 +227,8 @@ func (nc *NotesCollector) notesCookies() []*http.Cookie {
 	return values
 }
 
-func NewNotesCollector(userId uint) *NotesCollector {
-	return &NotesCollector{
-		c:                nil,
+func NewCollector(userId uint) *FurAffinityCollector {
+	return &FurAffinityCollector{
 		LimitConcurrency: 4,
 		WithContent:      true,
 		UserID:           userId,
@@ -243,7 +251,7 @@ func isNoteNew(note uint) bool {
 	return len(foundRows) == 0
 }
 
-func parseNoteSummary(noteElement *colly.HTMLElement) *NoteSummary {
+func (nc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement) *NoteSummary {
 	summary := NoteSummary{}
 	parseError := false
 
@@ -267,7 +275,7 @@ func parseNoteSummary(noteElement *colly.HTMLElement) *NoteSummary {
 
 	noteElement.ForEach(".note-list-senddate", func(i int, e *colly.HTMLElement) {
 		dateString := trimHtmlText(e.Text)
-		date, err := time.Parse(faDateLayout, dateString)
+		date, err := time.ParseInLocation(faDateLayout, dateString, nc.notesDateLocation())
 		if err != nil {
 			parseError = true
 			return
