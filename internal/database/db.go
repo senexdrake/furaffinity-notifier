@@ -12,8 +12,8 @@ import (
 type (
 	User struct {
 		gorm.Model
-		TelegramChatId  int64 `gorm:"uniqueIndex"`
-		UnreadNotesOnly bool
+		TelegramChatId  int64        `gorm:"uniqueIndex"`
+		UnreadNotesOnly bool         `gorm:"default:true"`
 		KnownNotes      []KnownNote  `gorm:"constraint:OnDelete:CASCADE;"`
 		Cookies         []UserCookie `gorm:"constraint:OnDelete:CASCADE;"`
 	}
