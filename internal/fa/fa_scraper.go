@@ -255,7 +255,7 @@ func (nc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 	})
 
 	noteElement.ForEach("a.notelink", func(i int, e *colly.HTMLElement) {
-		link, _ := furaffinityBaseUrl.Parse(e.Attr("href"))
+		link, _ := FurAffinityUrl().Parse(e.Attr("href"))
 		summary.Link = link
 		pathParts := util.Filter(strings.Split(link.Path, "/"), func(s string) bool {
 			return s != ""
