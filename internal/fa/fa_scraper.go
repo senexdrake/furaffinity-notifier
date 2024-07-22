@@ -7,6 +7,7 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"maps"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strconv"
 	"strings"
@@ -32,12 +33,13 @@ type (
 	}
 
 	NoteSummary struct {
-		ID      uint
-		Title   string
-		Date    time.Time
-		From    FurAffinityUser
-		Link    *url.URL
-		Content *NoteContent
+		ID        uint
+		Title     string
+		Date      time.Time
+		From      FurAffinityUser
+		Link      *url.URL
+		Content   *NoteContent
+		WasUnread bool
 	}
 )
 
@@ -54,6 +56,14 @@ var (
 
 func (nc *FurAffinityCollector) notesDateLocation() *time.Location {
 	return furaffinityDefaultLocation
+}
+
+func (nc *FurAffinityCollector) httpClient() *http.Client {
+	cookieJar, _ := cookiejar.New(nil)
+	cookieJar.SetCookies(furaffinityBaseUrl, nc.notesCookies())
+	return &http.Client{
+		Jar: cookieJar,
+	}
 }
 
 func (nc *FurAffinityCollector) configuredCollector() *colly.Collector {
@@ -136,10 +146,15 @@ func (nc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteSummary {
 			concurrencyLimit = 1
 		}
 
+		noteIds := make([]uint, 0)
+
 		guardChannel := make(chan struct{}, concurrencyLimit)
 
 		wg := sync.WaitGroup{}
 		for note := range nc.GetNewNotes() {
+			if note.WasUnread {
+				noteIds = append(noteIds, note.ID)
+			}
 			guardChannel <- struct{}{}
 			wg.Add(1)
 			go func() {
@@ -147,12 +162,14 @@ func (nc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteSummary {
 					<-guardChannel
 					wg.Done()
 				}()
-				note.Content = nc.GetNoteContent(note.ID)
+				// Fetch note content without marking it as read, because we will do a batch operation alter
+				note.Content = nc.GetNoteContent(note.ID, false)
 				channel <- note
 			}()
 		}
 
 		wg.Wait()
+		nc.MarkUnread(noteIds...)
 		close(channel)
 	}()
 
@@ -162,7 +179,7 @@ func (nc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteSummary {
 func (nc *FurAffinityCollector) GetNoteContents(notes []uint) map[uint]*NoteContent {
 	contentMap := make(map[uint]*NoteContent, len(notes))
 	for _, note := range notes {
-		content := nc.GetNoteContent(note)
+		content := nc.GetNoteContent(note, true)
 		if content != nil {
 			contentMap[note] = content
 		}
@@ -170,7 +187,7 @@ func (nc *FurAffinityCollector) GetNoteContents(notes []uint) map[uint]*NoteCont
 	return contentMap
 }
 
-func (nc *FurAffinityCollector) GetNoteContent(note uint) *NoteContent {
+func (nc *FurAffinityCollector) GetNoteContent(note uint, markUnread bool) *NoteContent {
 	c := nc.configuredCollector()
 
 	channel := make(chan *NoteContent)
@@ -191,6 +208,10 @@ func (nc *FurAffinityCollector) GetNoteContent(note uint) *NoteContent {
 			ID:   note,
 			Text: text,
 		}
+
+		if markUnread {
+			nc.MarkUnread(note)
+		}
 	})
 
 	link, err := noteIdToLink(note)
@@ -205,6 +226,25 @@ func (nc *FurAffinityCollector) GetNoteContent(note uint) *NoteContent {
 		c.Wait()
 	}()
 	return <-channel
+}
+
+func (nc *FurAffinityCollector) MarkUnread(noteId ...uint) error {
+	if len(noteId) == 0 {
+		// No notes to mark as unread ;)
+		return nil
+	}
+	client := nc.httpClient()
+	formValues := url.Values{}
+	formValues.Set("manage_notes", "1")
+	formValues.Set("move_to", "unread")
+
+	for _, id := range noteId {
+		formValues.Add("items[]", strconv.Itoa(int(id)))
+	}
+
+	postUrl, _ := FurAffinityUrl().Parse("/msg/pms/")
+	_, err := client.PostForm(postUrl.String(), formValues)
+	return err
 }
 
 func (nc *FurAffinityCollector) cookies() map[string]*http.Cookie {
@@ -279,6 +319,10 @@ func (nc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 	parseError := false
 
 	noteElement.ForEach(".note-list-subject", func(i int, e *colly.HTMLElement) {
+		e.ForEach("img.unread", func(i int, imgElement *colly.HTMLElement) {
+			// If this element is present, this note was unread previously, so we need to reset it later
+			summary.WasUnread = true
+		})
 		summary.Title = trimHtmlText(e.Text)
 	})
 
