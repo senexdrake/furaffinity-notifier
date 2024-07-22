@@ -16,9 +16,10 @@ import (
 
 type (
 	FurAffinityCollector struct {
-		LimitConcurrency int
-		UnreadNotesOnly  bool
-		UserID           uint
+		LimitConcurrency      int
+		OnlyUnreadNotes       bool
+		OnlySinceRegistration bool
+		UserID                uint
 	}
 	FurAffinityUser struct {
 		Name       string
@@ -72,6 +73,7 @@ func (nc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteSummary {
 		guardChannel = make(chan struct{}, nc.LimitConcurrency)
 	}
 	noteChannel := make(chan *NoteSummary)
+	userRegistrationDate := nc.registrationDate()
 
 	c := nc.configuredCollector()
 
@@ -82,9 +84,17 @@ func (nc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteSummary {
 				defer func() { <-guardChannel }()
 			}
 			parsed := nc.parseNoteSummary(e)
-			if parsed != nil {
-				noteChannel <- parsed
+			if parsed == nil {
+				return
 			}
+
+			// Return when note has been sent before this user registered and the option
+			// to only notify about newer notes has been set
+			if nc.OnlySinceRegistration && parsed.Date.Before(userRegistrationDate) {
+				return
+			}
+
+			noteChannel <- parsed
 		})
 	})
 
@@ -208,13 +218,24 @@ func (nc *FurAffinityCollector) cookies() map[string]*http.Cookie {
 	return cookieMap
 }
 
+func (nc *FurAffinityCollector) user() *database.User {
+	user := &database.User{}
+	user.ID = nc.UserID
+	database.Db().Limit(1).Find(user)
+	return user
+}
+
+func (nc *FurAffinityCollector) registrationDate() time.Time {
+	return nc.user().CreatedAt
+}
+
 func (nc *FurAffinityCollector) notesCookies() []*http.Cookie {
 	folderCookie := http.Cookie{
 		Value: "inbox",
 		Name:  "folder",
 	}
 
-	if nc.UnreadNotesOnly {
+	if nc.OnlyUnreadNotes {
 		folderCookie.Value = "unread"
 	}
 
@@ -230,9 +251,10 @@ func (nc *FurAffinityCollector) notesCookies() []*http.Cookie {
 
 func NewCollector(userId uint) *FurAffinityCollector {
 	return &FurAffinityCollector{
-		LimitConcurrency: 4,
-		UserID:           userId,
-		UnreadNotesOnly:  true,
+		LimitConcurrency:      4,
+		UserID:                userId,
+		OnlyUnreadNotes:       true,
+		OnlySinceRegistration: true,
 	}
 }
 
