@@ -309,7 +309,7 @@ func FurAffinityUrl() *url.URL {
 }
 
 func noteIdToLink(note uint) (*url.URL, error) {
-	return FurAffinityUrl().Parse(fmt.Sprintf("/msg/pms/1/%d/", note))
+	return FurAffinityUrl().Parse(fmt.Sprintf("/msg/pms/1/%d/#message", note))
 }
 
 func isNoteNew(note uint) bool {
