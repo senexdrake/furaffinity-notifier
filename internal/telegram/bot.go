@@ -303,21 +303,7 @@ func cancelConversationHandler(ctx context.Context, b *bot.Bot, update *models.U
 
 func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatId := update.Message.Chat.ID
-	messageParts := util.Filter(strings.Split(update.Message.Text, " "), func(s string) bool {
-		return s != ""
-	})
-
-	// First message part is always the command
-	if len(messageParts) < 2 {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatId,
-			Text:   "Please provide a parameter like 'on' or 'off'. Usage example:\n\n/unread_only on",
-		})
-		return
-	}
-
-	user, userFound := userFromChatId(update.Message.Chat.ID, nil)
-
+	user, userFound := userFromChatId(chatId, nil)
 	if !userFound {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: chatId,
@@ -325,18 +311,36 @@ func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		})
 	}
 
+	unreadOnlyStatus := func(unreadOnly bool) string {
+		if unreadOnly {
+			return "unread"
+		}
+		return "all"
+	}
+
+	messageParts := util.Filter(strings.Split(update.Message.Text, " "), func(s string) bool {
+		return s != ""
+	})
+
+	// First message part is always the command
+	if len(messageParts) < 2 {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    chatId,
+			ParseMode: models.ParseModeHTML,
+			Text: fmt.Sprintf("Please provide a parameter like 'on' or 'off'. Usage example:"+
+				"\n\n/unread_only on"+
+				"\n\nIt is currently set to <b>%s</b>", unreadOnlyStatus(user.UnreadNotesOnly)),
+		})
+		return
+	}
+
 	user.UnreadNotesOnly = slices.Contains(util.TruthyValues(), strings.ToLower(messageParts[1]))
 	database.Db().Save(user)
-
-	messageText := "Notifying about <b>all</b> messages"
-	if user.UnreadNotesOnly {
-		messageText = "Notifying only about <b>unread</b> messages"
-	}
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
-		Text:      messageText,
+		Text:      fmt.Sprintf("Notifying about <b>%s</b> messages", unreadOnlyStatus(user.UnreadNotesOnly)),
 	})
 }
 
