@@ -67,6 +67,7 @@ func UpdateJob() {
 	for _, user := range users {
 		c := fa.NewCollector(user.ID)
 		c.LimitConcurrency = 4
+		c.OnlyUnreadNotes = user.UnreadNotesOnly
 
 		for note := range c.GetNewNotesWithContent() {
 			telegram.HandleNewNote(note, &user)
