@@ -28,11 +28,11 @@ type (
 
 var newNoteMessageTemplate = util.TrimHtmlText(`
 New note on FurAffinity from <a href="%s">%s</a>!
-
+---------------------------------
 <b>%s</b>
 
 %s
-
+---------------------------------
 <a href="%s">Open</a>
 (Note ID: <code>%d</code>)
 `)
