@@ -12,9 +12,10 @@ import (
 type (
 	User struct {
 		gorm.Model
-		TelegramChatId int64        `gorm:"uniqueIndex"`
-		KnownNotes     []KnownNote  `gorm:"constraint:OnDelete:CASCADE;"`
-		Cookies        []UserCookie `gorm:"constraint:OnDelete:CASCADE;"`
+		TelegramChatId  int64 `gorm:"uniqueIndex"`
+		UnreadNotesOnly bool
+		KnownNotes      []KnownNote  `gorm:"constraint:OnDelete:CASCADE;"`
+		Cookies         []UserCookie `gorm:"constraint:OnDelete:CASCADE;"`
 	}
 
 	UserCookie struct {

@@ -4,6 +4,8 @@ import "strings"
 
 const EnvPrefix = "FN_"
 
+var truthyValues = []string{"1", "true", "yes", "on", "enable"}
+
 func Map[T, U any](ts []T, f func(T) U) []U {
 	us := make([]U, len(ts))
 	for i := range ts {
@@ -27,4 +29,8 @@ func TrimHtmlText(s string) string {
 
 func PrefixEnvVar(s string) string {
 	return EnvPrefix + s
+}
+
+func TruthyValues() []string {
+	return truthyValues
 }

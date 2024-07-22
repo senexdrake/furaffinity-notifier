@@ -8,22 +8,13 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/database"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
+	"gorm.io/gorm"
 	"os"
 	"os/signal"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
-)
-
-type (
-	CommandHandler struct {
-		Pattern     string
-		Description string
-		HandlerType bot.HandlerType
-		MatchType   bot.MatchType
-		HandlerFunc bot.HandlerFunc
-	}
 )
 
 var newNoteMessageTemplate = util.TrimHtmlText(`
@@ -55,7 +46,7 @@ func StartBot() *bot.Bot {
 
 	convEnd := ConversationEnd{
 		Command:  "/cancel",
-		Function: cancelConversation,
+		Function: cancelConversationHandler,
 	}
 
 	cookieConvHandler = NewConversationHandler(map[int]bot.HandlerFunc{
@@ -111,6 +102,7 @@ func commandHandlers() []CommandHandler {
 			HandlerType: bot.HandlerTypeMessageText,
 			MatchType:   bot.MatchTypeExact,
 			HandlerFunc: cookieHandler,
+			ChatAction:  models.ChatActionTyping,
 		},
 		{
 			Pattern:     "/start",
@@ -118,13 +110,23 @@ func commandHandlers() []CommandHandler {
 			HandlerType: bot.HandlerTypeMessageText,
 			MatchType:   bot.MatchTypeExact,
 			HandlerFunc: startHandler,
+			ChatAction:  models.ChatActionTyping,
 		},
 		{
 			Pattern:     "/cancel",
 			Description: "Cancels any active conversation",
 			HandlerType: bot.HandlerTypeMessageText,
 			MatchType:   bot.MatchTypeExact,
-			HandlerFunc: cancelConversation,
+			HandlerFunc: cancelConversationHandler,
+			ChatAction:  models.ChatActionTyping,
+		},
+		{
+			Pattern:     "/unread_only",
+			Description: "Notify only about unread messages or about all new messages",
+			HandlerType: bot.HandlerTypeMessageText,
+			MatchType:   bot.MatchTypePrefix,
+			HandlerFunc: unreadOnlyHandler,
+			ChatAction:  models.ChatActionTyping,
 		},
 	}
 
@@ -137,7 +139,12 @@ func commandHandlers() []CommandHandler {
 
 func registerHandlers(commands []CommandHandler, tgBot *bot.Bot, ctx context.Context) {
 	for _, command := range commands {
-		tgBot.RegisterHandler(command.HandlerType, command.Pattern, command.MatchType, command.HandlerFunc)
+		handler := command.HandlerFunc
+		if command.ChatAction != "" {
+			handler = command.ChatActionHandler()
+		}
+
+		tgBot.RegisterHandler(command.HandlerType, command.Pattern, command.MatchType, handler)
 	}
 }
 
@@ -209,10 +216,9 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatId := update.Message.Chat.ID
 	tx := database.Db().Begin()
-	user := &database.User{}
-	tx.Limit(1).Find(&user, "telegram_chat_id = ?", chatId)
+	user, userFound := userFromChatId(chatId, tx)
 
-	if user.ID > 0 {
+	if userFound {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: chatId,
 			Text:   "You are already registered. Welcome back!",
@@ -245,8 +251,7 @@ func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	tx := database.Db().Begin()
-	user := database.User{TelegramChatId: update.Message.Chat.ID}
-	tx.First(&user)
+	user, _ := userFromChatId(update.Message.Chat.ID, tx)
 
 	cookiesRaw := util.Map(strings.Split(update.Message.Text, ","), func(s string) string {
 		return strings.TrimSpace(s)
@@ -286,13 +291,60 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	})
 }
 
-func cancelConversation(ctx context.Context, b *bot.Bot, update *models.Update) {
-
+func cancelConversationHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// Send a message to indicate the conversation has been cancelled
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "conversation cancelled",
 	})
+}
+
+func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatId := update.Message.Chat.ID
+	messageParts := util.Filter(strings.Split(update.Message.Text, " "), func(s string) bool {
+		return s != ""
+	})
+
+	// First message part is always the command
+	if len(messageParts) < 2 {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatId,
+			Text:   "Please provide a parameter like 'on' or 'off'. Usage example:\n\n/unread_only on",
+		})
+		return
+	}
+
+	user, userFound := userFromChatId(update.Message.Chat.ID, nil)
+
+	if !userFound {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatId,
+			Text:   "No user found for your Chat ID. Have you registered using the /start command?",
+		})
+	}
+
+	user.UnreadNotesOnly = slices.Contains(util.TruthyValues(), strings.ToLower(messageParts[1]))
+	database.Db().Save(user)
+
+	messageText := "Notifying about <b>all</b> messages"
+	if user.UnreadNotesOnly {
+		messageText = "Notifying only about <b>unread</b> messages"
+	}
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    chatId,
+		ParseMode: models.ParseModeHTML,
+		Text:      messageText,
+	})
+}
+
+func userFromChatId(chatId int64, tx *gorm.DB) (*database.User, bool) {
+	if tx == nil {
+		tx = database.Db()
+	}
+	user := &database.User{}
+	tx.Limit(1).Find(user, "telegram_chat_id = ?", chatId)
+	return user, user.ID > 0
 }
 
 func creatorOnlyMiddleware(next bot.HandlerFunc) bot.HandlerFunc {

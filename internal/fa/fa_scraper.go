@@ -17,7 +17,7 @@ import (
 type (
 	FurAffinityCollector struct {
 		LimitConcurrency int
-		WithContent      bool
+		UnreadNotesOnly  bool
 		UserID           uint
 	}
 	FurAffinityUser struct {
@@ -209,11 +209,17 @@ func (nc *FurAffinityCollector) cookies() map[string]*http.Cookie {
 }
 
 func (nc *FurAffinityCollector) notesCookies() []*http.Cookie {
-	cookieMap := maps.Clone(nc.cookies())
-	cookieMap["folder"] = &http.Cookie{
+	folderCookie := http.Cookie{
 		Value: "inbox",
 		Name:  "folder",
 	}
+
+	if nc.UnreadNotesOnly {
+		folderCookie.Value = "unread"
+	}
+
+	cookieMap := maps.Clone(nc.cookies())
+	cookieMap["folder"] = &folderCookie
 
 	values := make([]*http.Cookie, 0, len(cookieMap))
 	for _, val := range cookieMap {
@@ -225,8 +231,8 @@ func (nc *FurAffinityCollector) notesCookies() []*http.Cookie {
 func NewCollector(userId uint) *FurAffinityCollector {
 	return &FurAffinityCollector{
 		LimitConcurrency: 4,
-		WithContent:      true,
 		UserID:           userId,
+		UnreadNotesOnly:  true,
 	}
 }
 
