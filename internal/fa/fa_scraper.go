@@ -176,14 +176,20 @@ func (nc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteSummary {
 	return channel
 }
 
-func (nc *FurAffinityCollector) GetNoteContents(notes []uint) map[uint]*NoteContent {
+func (nc *FurAffinityCollector) GetNoteContents(notes []uint, markUnread bool) map[uint]*NoteContent {
 	contentMap := make(map[uint]*NoteContent, len(notes))
 	for _, note := range notes {
-		content := nc.GetNoteContent(note, true)
+		// Instruct to not mark as unread as this can be done via a batch request once
+		content := nc.GetNoteContent(note, false)
 		if content != nil {
 			contentMap[note] = content
 		}
 	}
+
+	if markUnread {
+		nc.MarkUnread(util.Keys(contentMap)...)
+	}
+
 	return contentMap
 }
 
