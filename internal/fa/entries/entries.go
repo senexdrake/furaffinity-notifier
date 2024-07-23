@@ -5,6 +5,15 @@ type EntryType uint8
 const (
 	EntryTypeInvalid EntryType = iota
 	EntryTypeNote
-	EntryTypeComment
+	EntryTypeSubmissionComment
+	EntryTypeJournalComment
 	EntryTypeJournal
 )
+
+func EntriesOther() []EntryType {
+	return []EntryType{
+		EntryTypeJournal,
+		EntryTypeSubmissionComment,
+		EntryTypeJournalComment,
+	}
+}

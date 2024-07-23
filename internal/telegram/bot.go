@@ -170,19 +170,19 @@ func SendMessage(s string, user *database.User) {
 	})
 }
 
-func HandleNewNote(summary *fa.NoteSummary, user *database.User) {
+func HandleNewNote(summary *fa.NoteEntry, user *database.User) {
 	noteContent := "-- NO CONTENT --"
-	if summary.Content != nil {
-		noteContent = summary.Content.Text
+	if summary.Content() != nil {
+		noteContent = summary.Content().Text()
 	}
 
 	message := fmt.Sprintf(newNoteMessageTemplate,
-		summary.From.ProfileUrl,
-		summary.From.Name,
-		summary.Title,
+		summary.From().ProfileUrl,
+		summary.From().Name,
+		summary.Title(),
 		noteContent,
-		summary.Link.String(),
-		summary.ID,
+		summary.Link().String(),
+		summary.ID(),
 	)
 
 	linkPreviewDisabled := true
@@ -203,10 +203,51 @@ func HandleNewNote(summary *fa.NoteSummary, user *database.User) {
 	notifiedAt := time.Now()
 	database.Db().Create(&database.KnownEntry{
 		EntryType:  entries.EntryTypeNote,
-		ID:         summary.ID,
+		ID:         summary.ID(),
 		UserID:     user.ID,
 		NotifiedAt: &notifiedAt,
-		SentDate:   summary.Date,
+		SentDate:   summary.Date(),
+	})
+}
+
+func HandleNewEntry(entry fa.Entry, user *database.User) {
+	// TODO Implement!!!
+	entryContent := "-- NO CONTENT --"
+	if entry.Content() != nil {
+		entryContent = entry.Content().Text()
+	}
+
+	message := fmt.Sprintf(newCommentMessageTemplate,
+		entry.From().ProfileUrl,
+		entry.From().Name,
+		entry.Title(),
+		entryContent,
+		entry.Link().String(),
+		entry.ID(),
+	)
+
+	linkPreviewDisabled := true
+
+	_, err := botInstance.SendMessage(botContext, &bot.SendMessageParams{
+		ChatID:    user.TelegramChatId,
+		ParseMode: models.ParseModeHTML,
+		Text:      message,
+		LinkPreviewOptions: &models.LinkPreviewOptions{
+			IsDisabled: &linkPreviewDisabled,
+		},
+	})
+
+	if err != nil {
+		return
+	}
+
+	notifiedAt := time.Now()
+	database.Db().Create(&database.KnownEntry{
+		EntryType:  entry.EntryType(),
+		ID:         entry.ID(),
+		UserID:     user.ID,
+		NotifiedAt: &notifiedAt,
+		SentDate:   entry.Date(),
 	})
 }
 

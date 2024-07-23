@@ -13,6 +13,17 @@ New note on FurAffinity from <a href="%s">%s</a>!
 (Note ID: <code>%d</code>)
 `)
 
+var newCommentMessageTemplate = util.TrimHtmlText(`
+New comment on FurAffinity from <a href="%s">%s</a>!
+---------------------------------
+On: <b>%s</b>
+
+%s
+---------------------------------
+<a href="%s">Open</a>
+(Comment ID: <code>%d</code>)
+`)
+
 var privacyPolicyTemplate = util.TrimHtmlText(`
 This bot saves the following user information:
 

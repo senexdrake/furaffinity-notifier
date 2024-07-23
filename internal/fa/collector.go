@@ -3,6 +3,7 @@ package fa
 import (
 	"github.com/gocolly/colly"
 	"github.com/senexdrake/furaffinity-notifier/internal/database"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"net/http"
 	"net/http/cookiejar"
@@ -11,6 +12,22 @@ import (
 )
 
 type (
+	Entry interface {
+		EntryType() entries.EntryType
+		Date() time.Time
+		Link() *url.URL
+		ID() uint
+		From() FurAffinityUser
+		Title() string
+		Content() EntryContent
+		SetContent(EntryContent)
+	}
+
+	EntryContent interface {
+		ID() uint
+		Text() string
+	}
+
 	FurAffinityCollector struct {
 		LimitConcurrency      int
 		OnlyUnreadNotes       bool
@@ -25,7 +42,6 @@ type (
 
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
 const faBaseUrl = "https://www.furaffinity.net"
-const faDateLayout = "Jan 2, 2006 03:04PM"
 const faTimezone = "America/Los_Angeles"
 const faNoteSeparator = "—————————"
 
@@ -34,32 +50,32 @@ var (
 	furaffinityDefaultLocation, _ = time.LoadLocation(faTimezone)
 )
 
-func (nc *FurAffinityCollector) httpClient() *http.Client {
+func (fc *FurAffinityCollector) httpClient() *http.Client {
 	cookieJar, _ := cookiejar.New(nil)
-	cookieJar.SetCookies(furaffinityBaseUrl, nc.notesCookies())
+	cookieJar.SetCookies(furaffinityBaseUrl, fc.notesCookies())
 	return &http.Client{
 		Jar: cookieJar,
 	}
 }
 
-func (nc *FurAffinityCollector) configuredCollector(withCookies bool) *colly.Collector {
+func (fc *FurAffinityCollector) configuredCollector(withCookies bool) *colly.Collector {
 	c := colly.NewCollector(
 		colly.UserAgent(userAgent),
 		colly.Async(true),
 		colly.MaxDepth(2),
 	)
-	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: nc.LimitConcurrency})
+	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: fc.LimitConcurrency})
 
 	if withCookies {
-		c.SetCookies(faBaseUrl, nc.cookies())
+		c.SetCookies(faBaseUrl, fc.cookies())
 	}
 
 	return c
 }
 
-func (nc *FurAffinityCollector) cookieMap() map[string]*http.Cookie {
+func (fc *FurAffinityCollector) cookieMap() map[string]*http.Cookie {
 	cookies := make([]database.UserCookie, 0)
-	database.Db().Where(&database.UserCookie{UserID: nc.UserID}).Find(&cookies)
+	database.Db().Where(&database.UserCookie{UserID: fc.UserID}).Find(&cookies)
 
 	cookieMap := make(map[string]*http.Cookie)
 	for _, cookie := range cookies {
@@ -68,19 +84,32 @@ func (nc *FurAffinityCollector) cookieMap() map[string]*http.Cookie {
 	return cookieMap
 }
 
-func (nc *FurAffinityCollector) cookies() []*http.Cookie {
-	return util.Values(nc.cookieMap())
+func (fc *FurAffinityCollector) cookies() []*http.Cookie {
+	return util.Values(fc.cookieMap())
 }
 
-func (nc *FurAffinityCollector) user() *database.User {
+func (fc *FurAffinityCollector) user() *database.User {
 	user := &database.User{}
-	user.ID = nc.UserID
+	user.ID = fc.UserID
 	database.Db().Limit(1).Find(user)
 	return user
 }
 
-func (nc *FurAffinityCollector) registrationDate() time.Time {
-	return nc.user().CreatedAt
+func (fc *FurAffinityCollector) registrationDate() time.Time {
+	return fc.user().CreatedAt
+}
+
+func (fc *FurAffinityCollector) isEntryNew(entryType entries.EntryType, note uint) bool {
+	searchNote := database.KnownEntry{
+		EntryType: entryType,
+		ID:        note,
+		UserID:    fc.UserID,
+	}
+	foundRows := make([]database.KnownEntry, 0)
+
+	database.Db().Where(&searchNote).Find(&foundRows)
+
+	return len(foundRows) == 0
 }
 
 func NewCollector(userId uint) *FurAffinityCollector {
