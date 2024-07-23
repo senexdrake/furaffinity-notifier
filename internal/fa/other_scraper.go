@@ -5,6 +5,7 @@ import (
 	"github.com/gocolly/colly"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -81,14 +82,18 @@ func (fc *FurAffinityCollector) entryHandlerWrapper(
 	wg.Wait()
 }
 
-func (fc *FurAffinityCollector) GetOtherEntries() <-chan Entry {
+func (fc *FurAffinityCollector) GetOtherEntries(entryTypes ...entries.EntryType) <-chan Entry {
 	c := fc.otherCollector()
 
 	channel := make(chan Entry)
 
 	c.OnHTML("#messages-comments-submission", func(e *colly.HTMLElement) {
+		entryType := entries.EntryTypeSubmissionComment
+		if !slices.Contains(entryTypes, entryType) {
+			return
+		}
 		handlerFunc := func(channel chan<- Entry, wg *sync.WaitGroup, element *colly.HTMLElement) Entry {
-			parsed, err := fc.parseComment(entries.EntryTypeSubmissionComment, element)
+			parsed, err := fc.parseComment(entryType, element)
 			if err != nil {
 				return nil
 			}
@@ -103,8 +108,12 @@ func (fc *FurAffinityCollector) GetOtherEntries() <-chan Entry {
 	})
 
 	c.OnHTML("#messages-comments-journal", func(e *colly.HTMLElement) {
+		entryType := entries.EntryTypeJournalComment
+		if !slices.Contains(entryTypes, entryType) {
+			return
+		}
 		handlerFunc := func(channel chan<- Entry, wg *sync.WaitGroup, element *colly.HTMLElement) Entry {
-			parsed, err := fc.parseComment(entries.EntryTypeJournalComment, element)
+			parsed, err := fc.parseComment(entryType, element)
 			if err != nil {
 				return nil
 			}
@@ -129,10 +138,10 @@ func (fc *FurAffinityCollector) GetOtherEntries() <-chan Entry {
 	return channel
 }
 
-func (fc *FurAffinityCollector) GetNewOtherEntries() <-chan Entry {
+func (fc *FurAffinityCollector) GetNewOtherEntries(entryTypes ...entries.EntryType) <-chan Entry {
 	newEntries := make(chan Entry)
 
-	allEntries := fc.GetOtherEntries()
+	allEntries := fc.GetOtherEntries(entryTypes...)
 
 	go func() {
 		for entry := range allEntries {
@@ -146,7 +155,7 @@ func (fc *FurAffinityCollector) GetNewOtherEntries() <-chan Entry {
 	return newEntries
 }
 
-func (fc *FurAffinityCollector) GetNewOtherEntriesWithContent() <-chan Entry {
+func (fc *FurAffinityCollector) GetNewOtherEntriesWithContent(entryTypes ...entries.EntryType) <-chan Entry {
 	channel := make(chan Entry)
 	go func() {
 		concurrencyLimit := fc.LimitConcurrency
@@ -157,7 +166,7 @@ func (fc *FurAffinityCollector) GetNewOtherEntriesWithContent() <-chan Entry {
 		guardChannel := make(chan struct{}, concurrencyLimit)
 
 		wg := sync.WaitGroup{}
-		for entry := range fc.GetNewOtherEntries() {
+		for entry := range fc.GetNewOtherEntries(entryTypes...) {
 			guardChannel <- struct{}{}
 			wg.Add(1)
 			go func() {

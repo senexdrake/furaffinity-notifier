@@ -6,6 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/senexdrake/furaffinity-notifier/internal/database"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"os"
@@ -104,7 +105,11 @@ func updateForUser(user *database.User, doneCallback func()) {
 	}
 
 	if enableCommentNotifications {
-		for entry := range c.GetNewOtherEntriesWithContent() {
+		entryChannel := c.GetNewOtherEntriesWithContent(
+			entries.EntryTypeSubmissionComment,
+			entries.EntryTypeJournalComment,
+		)
+		for entry := range entryChannel {
 			telegram.HandleNewEntry(entry, user)
 		}
 	}
