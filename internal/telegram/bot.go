@@ -7,6 +7,7 @@ import (
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/database"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/gorm"
 	"os"
@@ -200,7 +201,8 @@ func HandleNewNote(summary *fa.NoteSummary, user *database.User) {
 	}
 
 	notifiedAt := time.Now()
-	database.Db().Create(&database.KnownNote{
+	database.Db().Create(&database.KnownEntry{
+		EntryType:  entries.EntryTypeNote,
 		ID:         summary.ID,
 		UserID:     user.ID,
 		NotifiedAt: &notifiedAt,

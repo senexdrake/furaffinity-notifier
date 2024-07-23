@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/gocolly/colly"
 	"github.com/senexdrake/furaffinity-notifier/internal/database"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"maps"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"strconv"
 	"strings"
@@ -16,17 +16,6 @@ import (
 )
 
 type (
-	FurAffinityCollector struct {
-		LimitConcurrency      int
-		OnlyUnreadNotes       bool
-		OnlySinceRegistration bool
-		UserID                uint
-	}
-	FurAffinityUser struct {
-		Name       string
-		ProfileUrl *url.URL
-	}
-
 	NoteContent struct {
 		ID   uint
 		Text string
@@ -43,37 +32,31 @@ type (
 	}
 )
 
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0"
-const faBaseUrl = "https://www.furaffinity.net"
-const faDateLayout = "Jan 2, 2006 03:04PM"
-const faTimezone = "America/Los_Angeles"
-const faNoteSeparator = "—————————"
-
-var (
-	furaffinityBaseUrl, _         = url.Parse(faBaseUrl)
-	furaffinityDefaultLocation, _ = time.LoadLocation(faTimezone)
-)
+const notesPath = "/msg/pms/"
 
 func (nc *FurAffinityCollector) notesDateLocation() *time.Location {
 	return furaffinityDefaultLocation
 }
 
-func (nc *FurAffinityCollector) httpClient() *http.Client {
-	cookieJar, _ := cookiejar.New(nil)
-	cookieJar.SetCookies(furaffinityBaseUrl, nc.notesCookies())
-	return &http.Client{
-		Jar: cookieJar,
+func (nc *FurAffinityCollector) notesCookies() []*http.Cookie {
+	folderCookie := http.Cookie{
+		Value: "inbox",
+		Name:  "folder",
 	}
+
+	if nc.OnlyUnreadNotes {
+		folderCookie.Value = "unread"
+	}
+
+	cookieMap := maps.Clone(nc.cookieMap())
+	cookieMap["folder"] = &folderCookie
+
+	return util.Values(cookieMap)
 }
 
-func (nc *FurAffinityCollector) configuredCollector() *colly.Collector {
-	c := colly.NewCollector(
-		colly.UserAgent(userAgent),
-		colly.Async(true),
-		colly.MaxDepth(2),
-	)
+func (nc *FurAffinityCollector) noteCollector() *colly.Collector {
+	c := nc.configuredCollector(false)
 	c.SetCookies(faBaseUrl, nc.notesCookies())
-	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: nc.LimitConcurrency})
 	return c
 }
 
@@ -85,7 +68,7 @@ func (nc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteSummary {
 	noteChannel := make(chan *NoteSummary)
 	userRegistrationDate := nc.registrationDate()
 
-	c := nc.configuredCollector()
+	c := nc.noteCollector()
 
 	c.OnHTML("#notes-list", func(e *colly.HTMLElement) {
 		e.ForEach(".note-list-container", func(i int, e *colly.HTMLElement) {
@@ -114,7 +97,7 @@ func (nc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteSummary {
 
 	go func() {
 		defer close(noteChannel)
-		c.Visit(fmt.Sprintf(faBaseUrl+"/msg/pms/%d/", page))
+		c.Visit(fmt.Sprintf(faBaseUrl+notesPath+"%d/", page))
 		c.Wait()
 	}()
 
@@ -128,7 +111,7 @@ func (nc *FurAffinityCollector) GetNewNotes() <-chan *NoteSummary {
 
 	go func() {
 		for note := range allNotes {
-			if isNoteNew(note.ID) {
+			if nc.isNoteNew(note.ID) {
 				newNotes <- note
 			}
 		}
@@ -194,7 +177,7 @@ func (nc *FurAffinityCollector) GetNoteContents(notes []uint, markUnread bool) m
 }
 
 func (nc *FurAffinityCollector) GetNoteContent(note uint, markUnread bool) *NoteContent {
-	c := nc.configuredCollector()
+	c := nc.noteCollector()
 
 	channel := make(chan *NoteContent)
 
@@ -248,74 +231,24 @@ func (nc *FurAffinityCollector) MarkUnread(noteId ...uint) error {
 		formValues.Add("items[]", strconv.Itoa(int(id)))
 	}
 
-	postUrl, _ := FurAffinityUrl().Parse("/msg/pms/")
+	postUrl, _ := FurAffinityUrl().Parse(notesPath)
 	_, err := client.PostForm(postUrl.String(), formValues)
 	return err
 }
 
-func (nc *FurAffinityCollector) cookies() map[string]*http.Cookie {
-	cookies := make([]database.UserCookie, 0)
-	database.Db().Where(&database.UserCookie{UserID: nc.UserID}).Find(&cookies)
-
-	cookieMap := make(map[string]*http.Cookie)
-	for _, cookie := range cookies {
-		cookieMap[cookie.Name] = &http.Cookie{Value: cookie.Value, Name: cookie.Name}
-	}
-	return cookieMap
-}
-
-func (nc *FurAffinityCollector) user() *database.User {
-	user := &database.User{}
-	user.ID = nc.UserID
-	database.Db().Limit(1).Find(user)
-	return user
-}
-
-func (nc *FurAffinityCollector) registrationDate() time.Time {
-	return nc.user().CreatedAt
-}
-
-func (nc *FurAffinityCollector) notesCookies() []*http.Cookie {
-	folderCookie := http.Cookie{
-		Value: "inbox",
-		Name:  "folder",
-	}
-
-	if nc.OnlyUnreadNotes {
-		folderCookie.Value = "unread"
-	}
-
-	cookieMap := maps.Clone(nc.cookies())
-	cookieMap["folder"] = &folderCookie
-
-	values := make([]*http.Cookie, 0, len(cookieMap))
-	for _, val := range cookieMap {
-		values = append(values, val)
-	}
-	return values
-}
-
-func NewCollector(userId uint) *FurAffinityCollector {
-	return &FurAffinityCollector{
-		LimitConcurrency:      4,
-		UserID:                userId,
-		OnlyUnreadNotes:       true,
-		OnlySinceRegistration: true,
-	}
-}
-
-func FurAffinityUrl() *url.URL {
-	return furaffinityBaseUrl
-}
-
 func noteIdToLink(note uint) (*url.URL, error) {
-	return FurAffinityUrl().Parse(fmt.Sprintf("/msg/pms/1/%d/#message", note))
+	return FurAffinityUrl().Parse(fmt.Sprintf(notesPath+"1/%d/#message", note))
 }
 
-func isNoteNew(note uint) bool {
-	foundRows := make([]database.KnownNote, 0)
+func (nc *FurAffinityCollector) isNoteNew(note uint) bool {
+	searchNote := database.KnownEntry{
+		EntryType: entries.EntryTypeNote,
+		ID:        note,
+		UserID:    nc.UserID,
+	}
+	foundRows := make([]database.KnownEntry, 0)
 
-	database.Db().Find(&foundRows, note)
+	database.Db().Where(&searchNote).Find(&foundRows)
 
 	return len(foundRows) == 0
 }
@@ -375,8 +308,4 @@ func (nc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 		return nil
 	}
 	return &summary
-}
-
-func trimHtmlText(s string) string {
-	return util.TrimHtmlText(s)
 }
