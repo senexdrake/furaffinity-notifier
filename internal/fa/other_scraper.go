@@ -129,27 +129,6 @@ func (fc *FurAffinityCollector) GetOtherEntries() <-chan Entry {
 	return channel
 }
 
-func (fc *FurAffinityCollector) GetOtherEntriesMap() map[entries.EntryType]<-chan Entry {
-	entryMap := make(map[entries.EntryType]chan Entry)
-
-	for entry := range fc.GetOtherEntries() {
-		targetChannel, found := entryMap[entry.EntryType()]
-		if !found {
-			targetChannel = make(chan Entry)
-			entryMap[entry.EntryType()] = targetChannel
-		}
-
-		targetChannel <- entry
-	}
-
-	returnMap := make(map[entries.EntryType]<-chan Entry, len(entryMap))
-	for entryType, entryChannel := range entryMap {
-		returnMap[entryType] = entryChannel
-	}
-
-	return returnMap
-}
-
 func (fc *FurAffinityCollector) GetNewOtherEntries() <-chan Entry {
 	newEntries := make(chan Entry)
 
