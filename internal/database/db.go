@@ -16,10 +16,15 @@ type (
 	}
 	User struct {
 		gorm.Model
-		TelegramChatId  int64        `gorm:"uniqueIndex"`
-		UnreadNotesOnly bool         `gorm:"default:true;not null"`
-		KnownEntries    []KnownEntry `gorm:"constraint:OnDelete:CASCADE;"`
-		Cookies         []UserCookie `gorm:"constraint:OnDelete:CASCADE;"`
+		TelegramChatId            int64        `gorm:"uniqueIndex"`
+		UnreadNotesOnly           bool         `gorm:"default:true;not null"`
+		NotesEnabled              bool         `gorm:"default:true;not null"`
+		SubmissionsEnabled        bool         `gorm:"default:false;not null"`
+		SubmissionCommentsEnabled bool         `gorm:"default:false;not null"`
+		JournalCommentsEnabled    bool         `gorm:"default:false;not null"`
+		JournalsEnabled           bool         `gorm:"default:false;not null"`
+		KnownEntries              []KnownEntry `gorm:"constraint:OnDelete:CASCADE;"`
+		Cookies                   []UserCookie `gorm:"constraint:OnDelete:CASCADE;"`
 	}
 
 	UserCookie struct {
@@ -37,7 +42,33 @@ type (
 	}
 )
 
-const latestSchemaVersion = 2
+func (u *User) EnabledEntryTypes() []entries.EntryType {
+	entryTypes := make([]entries.EntryType, 0)
+
+	if u.NotesEnabled {
+		entryTypes = append(entryTypes, entries.EntryTypeNote)
+	}
+
+	if u.SubmissionsEnabled {
+		entryTypes = append(entryTypes, entries.EntryTypeSubmission)
+	}
+
+	if u.SubmissionCommentsEnabled {
+		entryTypes = append(entryTypes, entries.EntryTypeSubmissionComment)
+	}
+
+	if u.JournalsEnabled {
+		entryTypes = append(entryTypes, entries.EntryTypeJournal)
+	}
+
+	if u.JournalCommentsEnabled {
+		entryTypes = append(entryTypes, entries.EntryTypeJournalComment)
+	}
+
+	return entryTypes
+}
+
+const latestSchemaVersion = 3
 
 var db *gorm.DB
 
@@ -58,57 +89,6 @@ func Db() *gorm.DB {
 	}
 
 	return db
-}
-
-func migrate() {
-	migrator := Db().Migrator()
-
-	if !migrator.HasTable(&SchemaInfo{}) {
-		migrator.CreateTable(&SchemaInfo{})
-		Db().Create(&SchemaInfo{Version: 1})
-
-		if !migrator.HasTable(&User{}) {
-			// Assume this is a completely new DB
-			migrator.AutoMigrate(&User{}, &UserCookie{}, &KnownEntry{})
-			err := updateSchemaVersion(latestSchemaVersion)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-
-	schemaInfo := SchemaInfo{}
-	db.First(&schemaInfo)
-
-	if schemaInfo.Version < 2 {
-		// Migrate from old known_notes table to the more generalized known_entries structure
-		if migrator.HasTable("known_notes") && !migrator.HasTable(&KnownEntry{}) {
-			migrator.CreateTable(&KnownEntry{})
-			tx := Db().Begin()
-			tx.Exec("INSERT INTO known_entries (`id`, `user_id`, `notified_at`, `sent_date`)" +
-				" SELECT `id`, `user_id`, `notified_at`, `sent_date` FROM known_notes")
-			tx.Model(&KnownEntry{}).
-				Where("entry_type IS NULL OR entry_type = ?", entries.EntryTypeInvalid).
-				Update("entry_type", entries.EntryTypeNote)
-			tx.Commit()
-			if tx.Error != nil {
-				panic(tx.Error)
-			}
-			migrator.DropTable("known_notes")
-		}
-		schemaInfo.Version = 2
-		err := updateSchemaVersion(schemaInfo.Version)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-func updateSchemaVersion(toVersion uint) error {
-	tx := Db().Session(&gorm.Session{AllowGlobalUpdate: true}).Begin()
-	tx.Model(&SchemaInfo{}).Update("version", toVersion)
-	tx.Commit()
-	return tx.Error
 }
 
 func CreateDatabase() {

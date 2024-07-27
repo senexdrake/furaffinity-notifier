@@ -26,9 +26,16 @@ var cookieConvHandler *ConversationHandler
 
 var telegramCreatorId, _ = strconv.Atoi(os.Getenv(util.PrefixEnvVar("TELEGRAM_CREATOR_ID")))
 
+const creatorOnly = true
+
 const (
-	creatorOnly      = true
 	stageCookieInput = iota
+	stageSettings
+	stageToggleNotes
+	stageToggleJournals
+	stageToggleSubmissions
+	stageToggleJournalComments
+	stageToggleSubmissionComments
 )
 
 func StartBot() *bot.Bot {
@@ -108,6 +115,14 @@ func commandHandlers() []CommandHandler {
 			HandlerType: bot.HandlerTypeMessageText,
 			MatchType:   bot.MatchTypePrefix,
 			HandlerFunc: unreadOnlyHandler,
+			ChatAction:  models.ChatActionTyping,
+		},
+		{
+			Pattern:     "/settings",
+			Description: "Change notification settings",
+			HandlerType: bot.HandlerTypeMessageText,
+			MatchType:   bot.MatchTypePrefix,
+			HandlerFunc: settingsHandler,
 			ChatAction:  models.ChatActionTyping,
 		},
 	}
@@ -392,6 +407,14 @@ func privacyPolicyHandler(ctx context.Context, b *bot.Bot, update *models.Update
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
 		Text:      fmt.Sprintf(privacyPolicyTemplate, update.Message.Chat.ID),
+	})
+}
+
+func settingsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	// TODO Implement
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Not yet implemented, sorry",
 	})
 }
 

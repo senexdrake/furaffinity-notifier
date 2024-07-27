@@ -11,13 +11,15 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"sync"
 	"syscall"
 	"time"
 )
 
-const enableCommentNotifications = false
+// Disabled for now until configuration options are implemented
+const enableOtherEntries = false
 
 func main() {
 	_ = godotenv.Load()
@@ -100,15 +102,16 @@ func updateForUser(user *database.User, doneCallback func()) {
 	c.LimitConcurrency = 4
 	c.OnlyUnreadNotes = user.UnreadNotesOnly
 
-	for note := range c.GetNewNotesWithContent() {
-		telegram.HandleNewNote(note, user)
+	entryTypes := user.EnabledEntryTypes()
+
+	if slices.Contains(entryTypes, entries.EntryTypeNote) {
+		for note := range c.GetNewNotesWithContent() {
+			telegram.HandleNewNote(note, user)
+		}
 	}
 
-	if enableCommentNotifications {
-		entryChannel := c.GetNewOtherEntriesWithContent(
-			entries.EntryTypeSubmissionComment,
-			entries.EntryTypeJournalComment,
-		)
+	if enableOtherEntries {
+		entryChannel := c.GetNewOtherEntriesWithContent(entryTypes...)
 		for entry := range entryChannel {
 			telegram.HandleNewEntry(entry, user)
 		}
