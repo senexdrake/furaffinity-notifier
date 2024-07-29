@@ -31,11 +31,6 @@ const creatorOnly = true
 const (
 	stageCookieInput = iota
 	stageSettings
-	stageToggleNotes
-	stageToggleJournals
-	stageToggleSubmissions
-	stageToggleJournalComments
-	stageToggleSubmissionComments
 )
 
 func StartBot() *bot.Bot {
