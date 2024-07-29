@@ -129,8 +129,7 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 
 	message := update.CallbackQuery.Message.Message
 
-	tx := database.Db().Begin()
-	user, _ := userFromChatId(chatId, tx)
+	user, _ := userFromChatId(chatId, nil)
 
 	queryData := update.CallbackQuery.Data
 	if queryData == "cancel" {
@@ -165,8 +164,7 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 
-	tx.Save(user)
-	tx.Commit()
+	database.Db().Save(user)
 
 	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 		CallbackQueryID: update.CallbackQuery.ID,
