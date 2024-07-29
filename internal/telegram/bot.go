@@ -25,7 +25,7 @@ var botContextCancel context.CancelFunc
 
 var convHandler *ConversationHandler
 
-var telegramCreatorId, _ = strconv.Atoi(os.Getenv(util.PrefixEnvVar("TELEGRAM_CREATOR_ID")))
+var telegramCreatorId = 0
 
 const creatorOnly = true
 
@@ -35,6 +35,8 @@ const (
 )
 
 func StartBot() *bot.Bot {
+	telegramCreatorId, _ = strconv.Atoi(os.Getenv(util.PrefixEnvVar("TELEGRAM_CREATOR_ID")))
+
 	botContext, botContextCancel = signal.NotifyContext(context.Background(), os.Interrupt)
 
 	convEnd := ConversationEnd{
