@@ -3,7 +3,7 @@ module github.com/senexdrake/furaffinity-notifier
 go 1.22
 
 require (
-	github.com/go-telegram/bot v1.6.0
+	github.com/go-telegram/bot v1.6.1
 	github.com/gocolly/colly v1.2.0
 	github.com/joho/godotenv v1.5.1
 	gorm.io/driver/sqlite v1.5.6

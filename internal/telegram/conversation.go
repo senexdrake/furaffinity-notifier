@@ -70,12 +70,21 @@ func (c *ConversationHandler) endConversationInternal(chatId int64, lock bool) {
 }
 
 func (c *ConversationHandler) getStageFunction(update *models.Update) bot.HandlerFunc {
-	chatId := update.Message.Chat.ID
+	chatId := int64(0)
+	if update.Message != nil {
+		chatId = update.Message.Chat.ID
+	} else if update.CallbackQuery != nil {
+		chatId = update.CallbackQuery.Message.Message.Chat.ID
+	}
+
+	if chatId == 0 {
+		return nil
+	}
 
 	stageId, active := c.stageIdForChat(chatId, true)
 
 	if active {
-		if strings.ToLower(update.Message.Text) == strings.ToLower(c.end.Command) {
+		if update.Message != nil && strings.ToLower(update.Message.Text) == strings.ToLower(c.end.Command) {
 			c.stagesMutex.Lock()
 			defer c.stagesMutex.Unlock()
 			// Retest condition after acquiring write lock

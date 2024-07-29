@@ -39,3 +39,14 @@ This bot saves the following user information:
 4. A list of Note IDs that belong to your FurAffinity account
 	- this is needed to keep track of notes this bot has notified you about already. No content is stored.
 `)
+
+var statusTemplate = util.TrimHtmlText(`
+Click one of the buttons to toggle it's respective settings.
+
+Current settings:
+<b>Notes</b>: %s
+<b>Submissions</b>: %s (NOT IMPLEMENTED)
+<b>Submission Comments</b>: %s
+<b>Journals</b>: %s (NOT IMPLEMENTED)
+<b>Journal Comments</b>: %s
+`)

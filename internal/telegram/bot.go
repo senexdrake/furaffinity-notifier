@@ -22,7 +22,7 @@ var botInstance *bot.Bot
 var botContext context.Context
 var botContextCancel context.CancelFunc
 
-var cookieConvHandler *ConversationHandler
+var convHandler *ConversationHandler
 
 var telegramCreatorId, _ = strconv.Atoi(os.Getenv(util.PrefixEnvVar("TELEGRAM_CREATOR_ID")))
 
@@ -46,8 +46,9 @@ func StartBot() *bot.Bot {
 		Function: cancelConversationHandler,
 	}
 
-	cookieConvHandler = NewConversationHandler(map[int]bot.HandlerFunc{
+	convHandler = NewConversationHandler(map[int]bot.HandlerFunc{
 		stageCookieInput: cookieInputHandler,
+		stageSettings:    onSettingsKeyboardSelect,
 	}, &convEnd)
 
 	opts := []bot.Option{
@@ -80,7 +81,7 @@ func StartBot() *bot.Bot {
 
 func middlewares() []bot.Middleware {
 	m := []bot.Middleware{
-		cookieConvHandler.CreateHandlerMiddleware(),
+		convHandler.CreateHandlerMiddleware(),
 	}
 
 	if creatorOnly && telegramCreatorId > 0 {
@@ -178,16 +179,9 @@ func ShutdownBot() {
 	botContextCancel()
 }
 
-func SendMessage(s string, user *database.User) {
-	botInstance.SendMessage(botContext, &bot.SendMessageParams{
-		ChatID: user.TelegramChatId,
-		Text:   s,
-	})
-}
-
 func HandleNewNote(summary *fa.NoteEntry, user *database.User) {
 	noteContent := "-- NO CONTENT --"
-	if summary.Content() != nil {
+	if summary.HasContent() {
 		noteContent = summary.Content().Text()
 	}
 
@@ -228,7 +222,7 @@ func HandleNewNote(summary *fa.NoteEntry, user *database.User) {
 func HandleNewEntry(entry fa.Entry, user *database.User) {
 	// TODO Implement!!!
 	entryContent := "-- NO CONTENT --"
-	if entry.Content() != nil {
+	if entry.HasContent() {
 		entryContent = entry.Content().Text()
 	}
 
@@ -267,6 +261,10 @@ func HandleNewEntry(entry fa.Entry, user *database.User) {
 }
 
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update.Message == nil {
+		return
+	}
+
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "default Handler",
@@ -299,7 +297,7 @@ func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	cookieConvHandler.SetActiveConversationStage(update.Message.Chat.ID, stageCookieInput)
+	convHandler.SetActiveConversationStage(update.Message.Chat.ID, stageCookieInput)
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
@@ -344,7 +342,7 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	tx.Create(&cookies)
 	tx.Commit()
 
-	cookieConvHandler.EndConversation(update.Message.Chat.ID)
+	convHandler.EndConversation(update.Message.Chat.ID)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Success",
@@ -407,14 +405,6 @@ func privacyPolicyHandler(ctx context.Context, b *bot.Bot, update *models.Update
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
 		Text:      fmt.Sprintf(privacyPolicyTemplate, update.Message.Chat.ID),
-	})
-}
-
-func settingsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	// TODO Implement
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Not yet implemented, sorry",
 	})
 }
 

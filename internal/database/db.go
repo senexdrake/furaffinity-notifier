@@ -42,27 +42,23 @@ type (
 	}
 )
 
+func (u *User) EntryTypeStatus() map[entries.EntryType]bool {
+	return map[entries.EntryType]bool{
+		entries.EntryTypeNote:              u.NotesEnabled,
+		entries.EntryTypeSubmission:        u.SubmissionsEnabled,
+		entries.EntryTypeSubmissionComment: u.SubmissionCommentsEnabled,
+		entries.EntryTypeJournal:           u.JournalsEnabled,
+		entries.EntryTypeJournalComment:    u.JournalCommentsEnabled,
+	}
+}
+
 func (u *User) EnabledEntryTypes() []entries.EntryType {
 	entryTypes := make([]entries.EntryType, 0)
 
-	if u.NotesEnabled {
-		entryTypes = append(entryTypes, entries.EntryTypeNote)
-	}
-
-	if u.SubmissionsEnabled {
-		entryTypes = append(entryTypes, entries.EntryTypeSubmission)
-	}
-
-	if u.SubmissionCommentsEnabled {
-		entryTypes = append(entryTypes, entries.EntryTypeSubmissionComment)
-	}
-
-	if u.JournalsEnabled {
-		entryTypes = append(entryTypes, entries.EntryTypeJournal)
-	}
-
-	if u.JournalCommentsEnabled {
-		entryTypes = append(entryTypes, entries.EntryTypeJournalComment)
+	for entryType, enabled := range u.EntryTypeStatus() {
+		if enabled {
+			entryTypes = append(entryTypes, entryType)
+		}
 	}
 
 	return entryTypes

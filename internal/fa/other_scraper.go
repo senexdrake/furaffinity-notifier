@@ -48,6 +48,7 @@ func (ce *CommentEntry) SetContent(ec EntryContent) {
 		panic("unknown content type")
 	}
 }
+func (ce *CommentEntry) HasContent() bool { return ce.content != nil }
 
 func (cc *CommentContent) ID() uint     { return cc.id }
 func (cc *CommentContent) Text() string { return cc.text }

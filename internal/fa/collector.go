@@ -21,11 +21,18 @@ type (
 		Title() string
 		Content() EntryContent
 		SetContent(EntryContent)
+		HasContent() bool
 	}
 
 	EntryContent interface {
 		ID() uint
 		Text() string
+	}
+
+	EntrySubmissionContent interface {
+		ID() uint
+		Text() string
+		ImageURL() *url.URL
 	}
 
 	FurAffinityCollector struct {

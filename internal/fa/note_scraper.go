@@ -50,6 +50,7 @@ func (ne *NoteEntry) SetContent(ec EntryContent) {
 		panic("unknown content type")
 	}
 }
+func (ne *NoteEntry) HasContent() bool { return ne.content != nil }
 
 func (nc *NoteContent) ID() uint     { return nc.id }
 func (nc *NoteContent) Text() string { return nc.text }

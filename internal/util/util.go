@@ -2,6 +2,8 @@ package util
 
 import "strings"
 
+const EmojiGreenCheck = "✅"
+const EmojiCross = "❌"
 const EnvPrefix = "FN_"
 
 var truthyValues = []string{"1", "true", "yes", "on", "enable"}

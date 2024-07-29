@@ -18,7 +18,6 @@ import (
 	"time"
 )
 
-// Disabled for now until configuration options are implemented
 const enableOtherEntries = false
 
 func main() {
@@ -47,7 +46,7 @@ func test() {
 	c.OnlyUnreadNotes = user.UnreadNotesOnly
 	c.OnlySinceRegistration = false
 
-	entryChannel := c.GetNewOtherEntriesWithContent()
+	entryChannel := c.GetNewOtherEntries(entries.EntryTypeJournalComment, entries.EntryTypeSubmissionComment)
 
 	for entry := range entryChannel {
 		fmt.Println(entry)
