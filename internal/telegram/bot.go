@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -412,11 +413,30 @@ func userFromChatId(chatId int64, tx *gorm.DB) (*database.User, bool) {
 	return user, user.ID > 0
 }
 
+func chatIdFromUpdate(update *models.Update) (int64, error) {
+	chatId := int64(0)
+	if update.Message != nil {
+		chatId = update.Message.Chat.ID
+	} else if update.CallbackQuery != nil {
+		chatId = update.CallbackQuery.Message.Message.Chat.ID
+	}
+
+	if chatId == 0 {
+		return 0, errors.New("could not determine chat ID")
+	}
+	return chatId, nil
+}
+
 func creatorOnlyMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		if int64(telegramCreatorId) != update.Message.Chat.ID {
+		chatId, err := chatIdFromUpdate(update)
+		if err != nil {
+			return
+		}
+
+		if int64(telegramCreatorId) != chatId {
 			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
+				ChatID: chatId,
 				Text:   "This bot is not yet available for the public. If you are interested, please contact this bot's creator (see bot description)",
 			})
 		} else {

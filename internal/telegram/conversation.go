@@ -70,14 +70,8 @@ func (c *ConversationHandler) endConversationInternal(chatId int64, lock bool) {
 }
 
 func (c *ConversationHandler) getStageFunction(update *models.Update) bot.HandlerFunc {
-	chatId := int64(0)
-	if update.Message != nil {
-		chatId = update.Message.Chat.ID
-	} else if update.CallbackQuery != nil {
-		chatId = update.CallbackQuery.Message.Message.Chat.ID
-	}
-
-	if chatId == 0 {
+	chatId, err := chatIdFromUpdate(update)
+	if err != nil {
 		return nil
 	}
 
