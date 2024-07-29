@@ -69,12 +69,23 @@ func settingsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatId, err := chatIdFromUpdate(update)
+	if err != nil {
+		return
+	}
+
 	if update.CallbackQuery == nil {
+		if update.Message != nil {
+			convHandler.EndConversation(chatId)
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: chatId,
+				Text:   "Cancelled settings conversation. Please enter your message again.",
+			})
+		}
 		return
 	}
 
 	message := update.CallbackQuery.Message.Message
-	chatId := message.Chat.ID
 
 	queryData := update.CallbackQuery.Data
 
@@ -83,7 +94,6 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 		b.EditMessageText(ctx, &bot.EditMessageTextParams{
 			MessageID: message.ID,
 			ChatID:    chatId,
-			ParseMode: models.ParseModeHTML,
 			Text:      "Cancelled",
 		})
 	}
