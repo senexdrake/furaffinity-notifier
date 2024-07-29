@@ -10,6 +10,7 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const buttonDataPrefix = "settings-"
@@ -20,7 +21,27 @@ var settingsKeyboardLayout = [][]entries.EntryType{
 	{entries.EntryTypeJournal, entries.EntryTypeJournalComment},
 }
 
-var settingsKeyboardTexts = []string{"Notes", "\n", "Submissions", "Submission Comments", "\n", "Journals", "Journal Comments"}
+var settingsMessageMap = map[int64]int{}
+var settingsMessageMapMutex = &sync.RWMutex{}
+
+func setMessageIdForChat(chatId int64, messageId int) {
+	settingsMessageMapMutex.Lock()
+	defer settingsMessageMapMutex.Unlock()
+	settingsMessageMap[chatId] = messageId
+}
+
+func deleteMessageIdForChat(chatId int64) {
+	settingsMessageMapMutex.Lock()
+	defer settingsMessageMapMutex.Unlock()
+	delete(settingsMessageMap, chatId)
+}
+
+func messageIdForChat(chatId int64) (int, bool) {
+	settingsMessageMapMutex.RLock()
+	defer settingsMessageMapMutex.RUnlock()
+	messageId, ok := settingsMessageMap[chatId]
+	return messageId, ok
+}
 
 func entryTypeToText(entryType entries.EntryType) string {
 	return entryType.Name()
@@ -60,12 +81,16 @@ func settingsKeyboard() *models.InlineKeyboardMarkup {
 func settingsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	convHandler.SetActiveConversationStage(update.Message.Chat.ID, stageSettings)
 	user, _ := userFromChatId(update.Message.Chat.ID, nil)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	msg, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
 		ParseMode:   models.ParseModeHTML,
 		Text:        entryTypeStatusList(user),
 		ReplyMarkup: settingsKeyboard(),
 	})
+	if err == nil {
+		// Set the current settings message to reference it later when editing
+		setMessageIdForChat(update.Message.Chat.ID, msg.ID)
+	}
 }
 
 func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -74,9 +99,26 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 
+	editStatusMessage := func(messageId int, user *database.User) {
+		if user == nil {
+			user, _ = userFromChatId(chatId, nil)
+		}
+		b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			MessageID: messageId,
+			ChatID:    chatId,
+			ParseMode: models.ParseModeHTML,
+			Text:      entryTypeStatusList(user) + "\n\n\nConversation Cancelled!",
+		})
+	}
+
 	if update.CallbackQuery == nil {
 		if update.Message != nil {
 			convHandler.EndConversation(chatId)
+			defer deleteMessageIdForChat(chatId)
+			messageId, found := messageIdForChat(chatId)
+			if found {
+				editStatusMessage(messageId, nil)
+			}
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: chatId,
 				Text:   "Cancelled settings conversation. Please enter your message again.",
@@ -87,19 +129,15 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 
 	message := update.CallbackQuery.Message.Message
 
-	queryData := update.CallbackQuery.Data
-
-	if queryData == "cancel" {
-		convHandler.EndConversation(chatId)
-		b.EditMessageText(ctx, &bot.EditMessageTextParams{
-			MessageID: message.ID,
-			ChatID:    chatId,
-			Text:      "Cancelled",
-		})
-	}
-
 	tx := database.Db().Begin()
 	user, _ := userFromChatId(chatId, tx)
+
+	queryData := update.CallbackQuery.Data
+	if queryData == "cancel" {
+		convHandler.EndConversation(chatId)
+		editStatusMessage(message.ID, user)
+	}
+
 	entryType := dataToEntryType(queryData)
 	typeEnabled := false
 	switch entryType {
