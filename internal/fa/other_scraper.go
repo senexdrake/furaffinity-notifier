@@ -146,7 +146,7 @@ func (fc *FurAffinityCollector) GetNewOtherEntries(entryTypes ...entries.EntryTy
 
 	go func() {
 		for entry := range allEntries {
-			if fc.isNoteNew(entry.ID()) {
+			if fc.isEntryNew(entry.EntryType(), entry.ID()) {
 				newEntries <- entry
 			}
 		}
