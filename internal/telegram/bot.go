@@ -29,7 +29,7 @@ var telegramCreatorId, _ = strconv.Atoi(os.Getenv(util.PrefixEnvVar("TELEGRAM_CR
 const creatorOnly = true
 
 const (
-	stageCookieInput = iota
+	stageCookieInput = iota + 1
 	stageSettings
 )
 
