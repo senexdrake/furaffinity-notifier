@@ -36,8 +36,8 @@ This bot saves the following user information:
 3. Your FurAffinity cookies 
 	- these are very sensitive, this allows the bot to fully impersonate you, which is required due to how FurAffinity works
 
-4. A list of Note IDs that belong to your FurAffinity account
-	- this is needed to keep track of notes this bot has notified you about already. No content is stored.
+4. A list of IDs that belong to your FurAffinity account: Note IDs, Comment IDs, Submission IDs and Journal IDs
+	- this is needed to keep track of entries this bot has notified you about already. No content is stored, although it is fetched temporarily when notifying you.
 `)
 
 var statusTemplate = util.TrimHtmlText(`
