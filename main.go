@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const enableOtherEntries = false
+const enableOtherEntries = true
 
 func main() {
 	_ = godotenv.Load()
