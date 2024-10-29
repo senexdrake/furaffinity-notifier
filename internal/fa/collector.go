@@ -2,7 +2,7 @@ package fa
 
 import (
 	"github.com/gocolly/colly"
-	"github.com/senexdrake/furaffinity-notifier/internal/database"
+	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"net/http"
@@ -81,8 +81,8 @@ func (fc *FurAffinityCollector) configuredCollector(withCookies bool) *colly.Col
 }
 
 func (fc *FurAffinityCollector) cookieMap() map[string]*http.Cookie {
-	cookies := make([]database.UserCookie, 0)
-	database.Db().Where(&database.UserCookie{UserID: fc.UserID}).Find(&cookies)
+	cookies := make([]db.UserCookie, 0)
+	db.Db().Where(&db.UserCookie{UserID: fc.UserID}).Find(&cookies)
 
 	cookieMap := make(map[string]*http.Cookie)
 	for _, cookie := range cookies {
@@ -95,10 +95,10 @@ func (fc *FurAffinityCollector) cookies() []*http.Cookie {
 	return util.Values(fc.cookieMap())
 }
 
-func (fc *FurAffinityCollector) user() *database.User {
-	user := &database.User{}
+func (fc *FurAffinityCollector) user() *db.User {
+	user := &db.User{}
 	user.ID = fc.UserID
-	database.Db().Limit(1).Find(user)
+	db.Db().Limit(1).Find(user)
 	return user
 }
 
@@ -107,14 +107,14 @@ func (fc *FurAffinityCollector) registrationDate() time.Time {
 }
 
 func (fc *FurAffinityCollector) isEntryNew(entryType entries.EntryType, note uint) bool {
-	searchNote := database.KnownEntry{
+	searchNote := db.KnownEntry{
 		EntryType: entryType,
 		ID:        note,
 		UserID:    fc.UserID,
 	}
-	foundRows := make([]database.KnownEntry, 0)
+	foundRows := make([]db.KnownEntry, 0)
 
-	database.Db().Where(&searchNote).Find(&foundRows)
+	db.Db().Where(&searchNote).Find(&foundRows)
 
 	return len(foundRows) == 0
 }

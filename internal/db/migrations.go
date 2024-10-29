@@ -1,4 +1,4 @@
-package database
+package db
 
 import (
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gocolly/colly"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"maps"
 	"net/http"
@@ -113,7 +114,7 @@ func (fc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteEntry {
 	})
 
 	c.OnError(func(response *colly.Response, err error) {
-		fmt.Println(err)
+		logging.Errorf("Error while scraping note: %v", err)
 	})
 
 	go func() {

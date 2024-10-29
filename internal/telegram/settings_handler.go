@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/senexdrake/furaffinity-notifier/internal/database"
+	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"strconv"
@@ -99,7 +99,7 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 
-	editStatusMessage := func(messageId int, user *database.User) {
+	editStatusMessage := func(messageId int, user *db.User) {
 		if user == nil {
 			user, _ = userFromChatId(chatId, nil)
 		}
@@ -164,7 +164,7 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 
-	database.Db().Save(user)
+	db.Db().Save(user)
 
 	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 		CallbackQueryID: update.CallbackQuery.ID,
@@ -180,7 +180,7 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 	})
 }
 
-func entryTypeStatusList(user *database.User) string {
+func entryTypeStatusList(user *db.User) string {
 	statusMap := user.EntryTypeStatus()
 	statusFunc := func(entryType entries.EntryType) string {
 		status := statusMap[entryType]

@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/joho/godotenv"
-	"github.com/senexdrake/furaffinity-notifier/internal/database"
+	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"os"
@@ -18,29 +19,42 @@ import (
 	"time"
 )
 
+const minimumUpdateInterval = 30 * time.Second
 const enableOtherEntries = true
 
 func main() {
-	_ = godotenv.Load()
+	appContext, _ := setup()
+	_ = telegram.StartBot(appContext)
 
-	database.CreateDatabase()
-	telegram.StartBot()
-	updateContext, updateContextCancel := signal.NotifyContext(context.Background(), os.Interrupt)
-	go StartBackgroundUpdates(updateContext, updateInterval())
+	go StartBackgroundUpdates(appContext, updateInterval())
 
-	quitChannel := make(chan os.Signal, 1)
-	signal.Notify(quitChannel, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
-	<-quitChannel
-	telegram.ShutdownBot()
-	updateContextCancel()
+	<-appContext.Done()
+	logging.Info("Bot exiting!")
+}
 
-	fmt.Println("Adios!")
+func setup() (context.Context, context.CancelFunc) {
+	logging.Info("---- BOT STARTING ----")
+	logging.Info("Welcome to FurAffinity Notifier!")
+	dotenvErr := godotenv.Load()
+	if dotenvErr != nil {
+		logging.Debugf("Error loading .env file: %v", dotenvErr)
+	}
+	db.CreateDatabase()
+
+	appContext, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt,
+		os.Kill,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+
+	return appContext, cancel
 }
 
 func test() {
-	user := database.User{}
+	user := db.User{}
 	user.ID = 1
-	database.Db().First(&user)
+	db.Db().First(&user)
 	c := fa.NewCollector(user.ID)
 	c.LimitConcurrency = 4
 	c.OnlyUnreadNotes = user.UnreadNotesOnly
@@ -60,10 +74,15 @@ func updateInterval() time.Duration {
 		interval = time.Duration(updateIntervalRaw) * time.Second
 
 	}
+	if interval < minimumUpdateInterval {
+		logging.Warnf("UPDATE_INTERVAL set too low, setting it to the minimum interval of %.0f seconds", minimumUpdateInterval.Seconds())
+		interval = minimumUpdateInterval
+	}
 	return interval
 }
 
 func StartBackgroundUpdates(ctx context.Context, interval time.Duration) {
+	logging.Infof("Starting background updates at an interval of %.0f seconds", interval.Seconds())
 	UpdateJob()
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -72,7 +91,7 @@ func StartBackgroundUpdates(ctx context.Context, interval time.Duration) {
 		case <-ticker.C:
 			UpdateJob()
 		case <-ctx.Done():
-			fmt.Println("Stopping BackgroundUpdates")
+			logging.Info("Stopping BackgroundUpdates")
 			// The context is over, stop processing results
 			return
 		}
@@ -80,8 +99,8 @@ func StartBackgroundUpdates(ctx context.Context, interval time.Duration) {
 }
 
 func UpdateJob() {
-	users := make([]database.User, 0)
-	database.Db().Find(&users)
+	users := make([]db.User, 0)
+	db.Db().Find(&users)
 
 	wg := sync.WaitGroup{}
 	// Do checks synchronously for now to prevent any massive rate limiting
@@ -95,8 +114,9 @@ func UpdateJob() {
 	wg.Wait()
 }
 
-func updateForUser(user *database.User, doneCallback func()) {
+func updateForUser(user *db.User, doneCallback func()) {
 	defer doneCallback()
+	logging.Debugf("Running update for user %d", user.ID)
 	c := fa.NewCollector(user.ID)
 	c.LimitConcurrency = 4
 	c.OnlyUnreadNotes = user.UnreadNotesOnly

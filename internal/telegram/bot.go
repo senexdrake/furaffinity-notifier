@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/senexdrake/furaffinity-notifier/internal/database"
+	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/gorm"
 	"os"
-	"os/signal"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,7 +21,7 @@ import (
 
 var botInstance *bot.Bot
 var botContext context.Context
-var botContextCancel context.CancelFunc
+var privacyPolicyCommand = createPrivacyPolicyCommand()
 
 var convHandler *ConversationHandler
 
@@ -34,10 +34,11 @@ const (
 	stageSettings
 )
 
-func StartBot() *bot.Bot {
+func StartBot(ctx context.Context) *bot.Bot {
 	telegramCreatorId, _ = strconv.Atoi(os.Getenv(util.PrefixEnvVar("TELEGRAM_CREATOR_ID")))
 
-	botContext, botContextCancel = signal.NotifyContext(context.Background(), os.Interrupt)
+	var botContextCancel context.CancelFunc
+	botContext, botContextCancel = context.WithCancel(ctx)
 
 	convEnd := ConversationEnd{
 		Command:  "/cancel",
@@ -50,6 +51,7 @@ func StartBot() *bot.Bot {
 	}, &convEnd)
 
 	opts := []bot.Option{
+		bot.WithErrorsHandler(errorHandler),
 		bot.WithDefaultHandler(defaultHandler),
 		bot.WithMiddlewares(middlewares()...),
 	}
@@ -77,6 +79,10 @@ func StartBot() *bot.Bot {
 	return b
 }
 
+func errorHandler(err error) {
+	logging.Logf(logging.LevelError, logging.DefaultCalldepth+1, "[TGBOT]: %v", err)
+}
+
 func middlewares() []bot.Middleware {
 	m := []bot.Middleware{
 		convHandler.CreateHandlerMiddleware(),
@@ -90,8 +96,27 @@ func middlewares() []bot.Middleware {
 	return m
 }
 
-func commandHandlers() []CommandHandler {
-	sortedCommands := []CommandHandler{
+func registerHandlers(commands []*CommandHandler, tgBot *bot.Bot, ctx context.Context) {
+	for _, command := range commands {
+		handler := command.HandlerFunc
+		if command.ChatAction != "" {
+			handler = command.ChatActionHandler()
+		}
+
+		tgBot.RegisterHandler(command.HandlerType, command.Pattern, command.MatchType, handler)
+	}
+}
+
+func registerCommands(commands []*CommandHandler, tgBot *bot.Bot, ctx context.Context) {
+	tgBot.SetMyCommands(ctx, &bot.SetMyCommandsParams{
+		Commands: util.Map(commands, func(ch *CommandHandler) models.BotCommand {
+			return models.BotCommand{Command: ch.Pattern, Description: ch.Description}
+		}),
+	})
+}
+
+func commandHandlers() []*CommandHandler {
+	sortedCommands := []*CommandHandler{
 		{
 			Pattern:     "/cookies",
 			Description: "Sets your FurAffinity cookies to access your private messages",
@@ -126,12 +151,13 @@ func commandHandlers() []CommandHandler {
 		},
 	}
 
-	slices.SortStableFunc(sortedCommands, func(a, b CommandHandler) int {
+	slices.SortStableFunc(sortedCommands, func(a, b *CommandHandler) int {
 		return strings.Compare(a.Pattern, b.Pattern)
 	})
 
 	// Add unsorted commands to the bottom
-	unsortedCommands := []CommandHandler{
+	unsortedCommands := []*CommandHandler{
+		privacyPolicyCommand,
 		{
 			Pattern:     "/start",
 			Description: "Starts bot interaction",
@@ -140,44 +166,13 @@ func commandHandlers() []CommandHandler {
 			HandlerFunc: startHandler,
 			ChatAction:  models.ChatActionTyping,
 		},
-		{
-			Pattern:     "/privacy",
-			Description: "Privacy policy",
-			HandlerType: bot.HandlerTypeMessageText,
-			MatchType:   bot.MatchTypeExact,
-			HandlerFunc: privacyPolicyHandler,
-			ChatAction:  models.ChatActionTyping,
-		},
 	}
 
 	commands := append(sortedCommands, unsortedCommands...)
 	return commands
 }
 
-func registerHandlers(commands []CommandHandler, tgBot *bot.Bot, ctx context.Context) {
-	for _, command := range commands {
-		handler := command.HandlerFunc
-		if command.ChatAction != "" {
-			handler = command.ChatActionHandler()
-		}
-
-		tgBot.RegisterHandler(command.HandlerType, command.Pattern, command.MatchType, handler)
-	}
-}
-
-func registerCommands(commands []CommandHandler, tgBot *bot.Bot, ctx context.Context) {
-	tgBot.SetMyCommands(ctx, &bot.SetMyCommandsParams{
-		Commands: util.Map(commands, func(ch CommandHandler) models.BotCommand {
-			return models.BotCommand{Command: ch.Pattern, Description: ch.Description}
-		}),
-	})
-}
-
-func ShutdownBot() {
-	botContextCancel()
-}
-
-func HandleNewNote(summary *fa.NoteEntry, user *database.User) {
+func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 	noteContent := "-- NO CONTENT --"
 	if summary.HasContent() {
 		noteContent = summary.Content().Text()
@@ -208,7 +203,7 @@ func HandleNewNote(summary *fa.NoteEntry, user *database.User) {
 	}
 
 	notifiedAt := time.Now()
-	database.Db().Create(&database.KnownEntry{
+	db.Db().Create(&db.KnownEntry{
 		EntryType:  entries.EntryTypeNote,
 		ID:         summary.ID(),
 		UserID:     user.ID,
@@ -217,7 +212,7 @@ func HandleNewNote(summary *fa.NoteEntry, user *database.User) {
 	})
 }
 
-func HandleNewEntry(entry fa.Entry, user *database.User) {
+func HandleNewEntry(entry fa.Entry, user *db.User) {
 	// TODO Implement!!!
 	entryContent := "-- NO CONTENT --"
 	if entry.HasContent() {
@@ -249,7 +244,7 @@ func HandleNewEntry(entry fa.Entry, user *database.User) {
 	}
 
 	notifiedAt := time.Now()
-	database.Db().Create(&database.KnownEntry{
+	db.Db().Create(&db.KnownEntry{
 		EntryType:  entry.EntryType(),
 		ID:         entry.ID(),
 		UserID:     user.ID,
@@ -269,148 +264,11 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	})
 }
 
-func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	chatId := update.Message.Chat.ID
-	tx := database.Db().Begin()
-	user, userFound := userFromChatId(chatId, tx)
-
-	if userFound {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatId,
-			Text:   "You are already registered. Welcome back!",
-		})
-		tx.Commit()
-		return
-	}
-
-	user.TelegramChatId = chatId
-	tx.Create(&user)
-	tx.Commit()
-
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    chatId,
-		ParseMode: models.ParseModeHTML,
-		Text:      "You have been registered as a user. Please set up your cookies using the /cookies command.",
-	})
-}
-
-func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	convHandler.SetActiveConversationStage(update.Message.Chat.ID, stageCookieInput)
-
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		ParseMode: models.ParseModeHTML,
-		Text:      "Please input cookies 'a' and 'b' im the following form:\n\n<code>a=COOKIE, b=COOKIE</code>",
-	})
-
-}
-
-func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	tx := database.Db().Begin()
-	user, _ := userFromChatId(update.Message.Chat.ID, tx)
-
-	cookiesRaw := util.Map(strings.Split(update.Message.Text, ","), func(s string) string {
-		return strings.TrimSpace(s)
-	})
-
-	cookies := make([]database.UserCookie, 0)
-
-	for _, cookieKeyValue := range cookiesRaw {
-		splitCookie := strings.Split(cookieKeyValue, "=")
-		if len(splitCookie) != 2 {
-			continue
-		}
-
-		cookies = append(cookies, database.UserCookie{
-			UserID: user.ID,
-			Name:   splitCookie[0],
-			Value:  splitCookie[1],
-		})
-	}
-
-	if len(cookies) != 2 {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "You entered invalid cookies. Please try again.",
-		})
-		return
-	}
-
-	tx.Delete(&database.UserCookie{}, "user_id = ?", user.ID)
-	tx.Create(&cookies)
-	tx.Commit()
-
-	convHandler.EndConversation(update.Message.Chat.ID)
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Success",
-	})
-}
-
-func cancelConversationHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	// Send a message to indicate the conversation has been cancelled
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "conversation cancelled",
-	})
-}
-
-func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	chatId := update.Message.Chat.ID
-	user, userFound := userFromChatId(chatId, nil)
-	if !userFound {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatId,
-			Text:   "No user found for your Chat ID. Have you registered using the /start command?",
-		})
-	}
-
-	unreadOnlyStatus := func(unreadOnly bool) string {
-		if unreadOnly {
-			return "unread"
-		}
-		return "all"
-	}
-
-	messageParts := util.Filter(strings.Split(update.Message.Text, " "), func(s string) bool {
-		return s != ""
-	})
-
-	// First message part is always the command
-	if len(messageParts) < 2 {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    chatId,
-			ParseMode: models.ParseModeHTML,
-			Text: fmt.Sprintf("Please provide a parameter like 'on' or 'off'. Usage example:"+
-				"\n\n/unread_only on"+
-				"\n\nIt is currently set to <b>%s</b>", unreadOnlyStatus(user.UnreadNotesOnly)),
-		})
-		return
-	}
-
-	user.UnreadNotesOnly = slices.Contains(util.TruthyValues(), strings.ToLower(messageParts[1]))
-	database.Db().Save(user)
-
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    chatId,
-		ParseMode: models.ParseModeHTML,
-		Text:      fmt.Sprintf("Notifying about <b>%s</b> messages", unreadOnlyStatus(user.UnreadNotesOnly)),
-	})
-}
-
-func privacyPolicyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
-		ParseMode: models.ParseModeHTML,
-		Text:      fmt.Sprintf(privacyPolicyTemplate, update.Message.Chat.ID),
-	})
-}
-
-func userFromChatId(chatId int64, tx *gorm.DB) (*database.User, bool) {
+func userFromChatId(chatId int64, tx *gorm.DB) (*db.User, bool) {
 	if tx == nil {
-		tx = database.Db()
+		tx = db.Db()
 	}
-	user := &database.User{}
+	user := &db.User{}
 	tx.Limit(1).Find(user, "telegram_chat_id = ?", chatId)
 	return user, user.ID > 0
 }
@@ -431,6 +289,12 @@ func chatIdFromUpdate(update *models.Update) (int64, error) {
 
 func creatorOnlyMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+		// Always allow privacy policy command
+		if update.Message != nil && strings.EqualFold(update.Message.Text, privacyPolicyCommand.Pattern) {
+			next(ctx, b, update)
+			return
+		}
+
 		chatId, err := chatIdFromUpdate(update)
 		if err != nil {
 			return
