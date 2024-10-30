@@ -33,12 +33,17 @@ func main() {
 }
 
 func setup() (context.Context, context.CancelFunc) {
+	dotenvErr := godotenv.Load()
+	logLevelErr := logging.SetLogLevelFromEnvironment(util.PrefixEnvVar("LOG_LEVEL"))
+	if dotenvErr != nil {
+		logging.Debugf("error loading .env file: %v", dotenvErr)
+	}
+	if logLevelErr != nil {
+		logging.Errorf("error setting log level: %v", logLevelErr)
+	}
+
 	logging.Info("---- BOT STARTING ----")
 	logging.Info("Welcome to FurAffinity Notifier!")
-	dotenvErr := godotenv.Load()
-	if dotenvErr != nil {
-		logging.Debugf("Error loading .env file: %v", dotenvErr)
-	}
 	db.CreateDatabase()
 
 	appContext, cancel := signal.NotifyContext(context.Background(),
