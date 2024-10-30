@@ -2,6 +2,7 @@ package logging
 
 import (
 	"fmt"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"log"
 	"maps"
 	"os"
@@ -86,10 +87,7 @@ func SetLogLevelFromEnvironment(envVar string) error {
 	return SetLogLevelByName(value)
 }
 func SetLogLevelByName(levelName string) error {
-	nameLookupMap := make(map[string]LogLevel)
-	for k, v := range levelNames {
-		nameLookupMap[v] = k
-	}
+	nameLookupMap := util.ReverseMap(levelNames)
 
 	level, found := nameLookupMap[strings.ToUpper(levelName)]
 	if !found {
