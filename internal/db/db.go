@@ -64,6 +64,12 @@ func (u *User) EnabledEntryTypes() []entries.EntryType {
 	return entryTypes
 }
 
+func (e *KnownEntry) BeforeSave(tx *gorm.DB) error {
+	e.NotifiedAt = util.ToUTC(e.NotifiedAt)
+	e.SentDate = e.SentDate.UTC()
+	return nil
+}
+
 const latestSchemaVersion = 3
 
 var db *gorm.DB

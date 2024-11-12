@@ -1,6 +1,9 @@
 package util
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 const EmojiGreenCheck = "✅"
 const EmojiCross = "❌"
@@ -67,4 +70,12 @@ func PrefixEnvVar(s string) string {
 
 func TruthyValues() []string {
 	return truthyValues
+}
+
+func ToUTC(time *time.Time) *time.Time {
+	if time == nil {
+		return nil
+	}
+	utc := time.UTC()
+	return &utc
 }
