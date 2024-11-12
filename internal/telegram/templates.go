@@ -1,28 +1,27 @@
 package telegram
 
-import "github.com/senexdrake/furaffinity-notifier/internal/util"
+import (
+	"github.com/senexdrake/furaffinity-notifier/internal/tmpl"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
+	"html/template"
+)
 
-var newNoteMessageTemplate = util.TrimHtmlText(`
-New note on FurAffinity from <a href="%s">%s</a>!
----------------------------------
-<b>%s</b>
+var baseTemplate = template.Must(
+	template.New(tmpl.BaseTemplateName).Funcs(templateFuncMap()).ParseFS(tmpl.TemplateFS(), tmpl.TemplatePath(tmpl.BaseTemplateName)),
+)
 
-%s
----------------------------------
-<a href="%s">Open</a>
-(Note ID: <code>%d</code>)
-`)
+func createTemplate(targetTemplatePath string) (*template.Template, error) {
+	cloned, err := baseTemplate.Clone()
+	if err != nil {
+		return nil, err
+	}
 
-var newCommentMessageTemplate = util.TrimHtmlText(`
-New comment on FurAffinity from <a href="%s">%s</a>!
----------------------------------
-On: <b>%s</b>
+	return cloned.ParseFS(tmpl.TemplateFS(), targetTemplatePath)
+}
 
-%s
----------------------------------
-<a href="%s">Open</a>
-(Comment ID: <code>%d</code>)
-`)
+var newNoteMessageTemplate = template.Must(createTemplate(tmpl.TemplatePath("new-note.gohtml")))
+
+var newCommentMessageTemplate = template.Must(createTemplate(tmpl.TemplatePath("new-comment.gohtml")))
 
 var privacyPolicyTemplate = util.TrimHtmlText(`
 This bot saves the following user information:
@@ -50,3 +49,7 @@ Current settings:
 <b>Journals</b>: %s (NOT IMPLEMENTED)
 <b>Journal Comments</b>: %s
 `)
+
+func templateFuncMap() template.FuncMap {
+	return template.FuncMap{}
+}

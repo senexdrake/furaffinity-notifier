@@ -1,15 +1,16 @@
 package telegram
 
 import (
+	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/tmpl"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/gorm"
 	"os"
@@ -178,27 +179,34 @@ func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 		noteContent = summary.Content().Text()
 	}
 
-	message := fmt.Sprintf(newNoteMessageTemplate,
-		summary.From().ProfileUrl,
-		summary.From().Name,
-		summary.Title(),
-		noteContent,
-		summary.Link().String(),
-		summary.ID(),
-	)
+	buf := new(bytes.Buffer)
+	err := newNoteMessageTemplate.Execute(buf, &tmpl.NewNotesContent{
+		ID:       summary.ID(),
+		Title:    summary.Title(),
+		UserLink: summary.From().ProfileUrl.String(),
+		UserName: summary.From().Name,
+		Content:  noteContent,
+		Link:     summary.Link().String(),
+	})
+
+	if err != nil {
+		logging.Errorf("error writing new notes template: %v", err)
+		return
+	}
 
 	linkPreviewDisabled := true
 
-	_, err := botInstance.SendMessage(botContext, &bot.SendMessageParams{
+	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
 		ChatID:    user.TelegramChatId,
 		ParseMode: models.ParseModeHTML,
-		Text:      message,
+		Text:      buf.String(),
 		LinkPreviewOptions: &models.LinkPreviewOptions{
 			IsDisabled: &linkPreviewDisabled,
 		},
 	})
 
 	if err != nil {
+		logging.Errorf("error sending note notification: %v", err)
 		return
 	}
 
@@ -219,27 +227,34 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 		entryContent = entry.Content().Text()
 	}
 
-	message := fmt.Sprintf(newCommentMessageTemplate,
-		entry.From().ProfileUrl,
-		entry.From().Name,
-		entry.Title(),
-		entryContent,
-		entry.Link().String(),
-		entry.ID(),
-	)
+	buf := new(bytes.Buffer)
+	err := newCommentMessageTemplate.Execute(buf, &tmpl.NewCommentsContent{
+		ID:       entry.ID(),
+		OnEntry:  entry.Title(),
+		UserLink: entry.From().ProfileUrl.String(),
+		UserName: entry.From().Name,
+		Content:  entryContent,
+		Link:     entry.Link().String(),
+	})
+
+	if err != nil {
+		logging.Errorf("error writing new comments template: %v", err)
+		return
+	}
 
 	linkPreviewDisabled := true
 
-	_, err := botInstance.SendMessage(botContext, &bot.SendMessageParams{
+	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
 		ChatID:    user.TelegramChatId,
 		ParseMode: models.ParseModeHTML,
-		Text:      message,
+		Text:      buf.String(),
 		LinkPreviewOptions: &models.LinkPreviewOptions{
 			IsDisabled: &linkPreviewDisabled,
 		},
 	})
 
 	if err != nil {
+		logging.Errorf("error sending entry notification: %v", err)
 		return
 	}
 

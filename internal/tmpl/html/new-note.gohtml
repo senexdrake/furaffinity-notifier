@@ -1,0 +1,10 @@
+{{define "message"}}
+New note on FurAffinity from <a href="{{.UserLink}}">{{.UserName}}</a>!
+---------------------------------
+<b>{{.Title}}</b>
+
+{{.Content}}
+---------------------------------
+<a href="{{.Link}}">Open</a>
+(Note ID: <code>{{.ID}}</code>)
+{{end}}

@@ -119,7 +119,10 @@ func (fc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteEntry {
 
 	go func() {
 		defer close(noteChannel)
-		c.Visit(fmt.Sprintf(faBaseUrl+notesPath+"%d/", page))
+		err := c.Visit(fmt.Sprintf(faBaseUrl+notesPath+"%d/", page))
+		if err != nil {
+			logging.Errorf("Error while scraping notes: %v", err)
+		}
 		c.Wait()
 	}()
 

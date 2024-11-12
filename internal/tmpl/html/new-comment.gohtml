@@ -1,0 +1,10 @@
+{{define "message"}}
+New comment on FurAffinity from <a href="{{.UserLink}}">{{.UserName}}</a>!
+---------------------------------
+On: <b>{{.OnEntry}}</b>
+
+{{.Content}}
+---------------------------------
+<a href="{{.Link}}">Open</a>
+(Comment ID: <code>{{.ID}}</code>)
+{{end}}
