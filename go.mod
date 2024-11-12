@@ -3,8 +3,8 @@ module github.com/senexdrake/furaffinity-notifier
 go 1.23
 
 require (
-	github.com/go-telegram/bot v1.9.1
-	github.com/gocolly/colly v1.2.0
+	github.com/go-telegram/bot v1.10.1
+	github.com/gocolly/colly/v2 v2.1.0
 	github.com/joho/godotenv v1.5.1
 	gorm.io/driver/sqlite v1.5.6
 	gorm.io/gorm v1.25.12
@@ -25,8 +25,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.24 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
 	github.com/temoto/robotstxt v1.1.2 // indirect
-	golang.org/x/net v0.30.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/net v0.31.0 // indirect
+	golang.org/x/text v0.20.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 )

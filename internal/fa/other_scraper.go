@@ -2,7 +2,7 @@ package fa
 
 import (
 	"errors"
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"net/url"
 	"slices"
