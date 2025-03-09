@@ -177,7 +177,10 @@ func (fc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteEntry {
 		}
 
 		wg.Wait()
-		fc.MarkUnread(noteIds...)
+		err := fc.MarkUnread(noteIds...)
+		if err != nil {
+			logging.Errorf("Error while marking notes as unreads: %v", err)
+		}
 		close(channel)
 	}()
 
@@ -273,15 +276,17 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 	summary := NoteEntry{}
 	parseError := false
 
-	noteElement.ForEach(".note-list-subject", func(i int, e *colly.HTMLElement) {
-		e.ForEach("img.unread", func(i int, imgElement *colly.HTMLElement) {
-			// If this element is present, this note was unread previously, so we need to reset it later
-			summary.WasUnread = true
-		})
+	noteElement.ForEach(".note-list-subject-container", func(i int, e *colly.HTMLElement) {
 		summary.title = trimHtmlText(e.Text)
 	})
 
 	noteElement.ForEach("a.notelink", func(i int, e *colly.HTMLElement) {
+		dom := e.DOM
+		if dom != nil {
+			// If DOM is present, check whether the note is marked as unread by class assignment
+			summary.WasUnread = e.DOM.HasClass("unread") || e.DOM.HasClass("note-unread")
+		}
+
 		link, _ := FurAffinityUrl().Parse(e.Attr("href"))
 		summary.link = link
 		pathParts := util.Filter(strings.Split(link.Path, "/"), func(s string) bool {
@@ -294,6 +299,14 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 		}
 		summary.id = uint(id)
 	})
+
+	if !summary.WasUnread {
+		// If the note is not marked as unread previously, double check by checking whether the unread icon is present
+		noteElement.ForEach("img.unread", func(i int, imgElement *colly.HTMLElement) {
+			// If this element is present, this note was unread previously, so we need to reset it later
+			summary.WasUnread = true
+		})
+	}
 
 	noteElement.ForEach(".note-list-senddate", func(i int, e *colly.HTMLElement) {
 		dateString := trimHtmlText(e.Text)
