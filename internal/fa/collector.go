@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -155,11 +156,23 @@ func userFromElement(e *colly.HTMLElement) FurAffinityUser {
 		return FurAffinityUser{UserName: faDefaultUsername}
 	}
 
+	var profileUrl *url.URL
+	usernameElement := e.DOM.Find(".js-userName-block")
+	href, exists := usernameElement.Attr("href")
+	if exists {
+		profileUrl, _ = FurAffinityUrl().Parse(href)
+	}
+	username := strings.Trim(trimHtmlText(usernameElement.Text()), "~")
+	if profileUrl == nil && len(username) > 0 {
+		// Just guess the URL
+		profileUrl, _ = FurAffinityUrl().Parse("/user/" + username + "/")
+	}
+
 	displayName := trimHtmlText(e.ChildText(".js-displayName-block"))
-	username := trimHtmlText(e.ChildText(".js-userName-block"))
 
 	return FurAffinityUser{
 		DisplayName: displayName,
 		UserName:    username,
+		ProfileUrl:  profileUrl,
 	}
 }
