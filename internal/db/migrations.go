@@ -26,7 +26,7 @@ func migrate() {
 	db.First(&schemaInfo)
 
 	migrateToV2(migrator, &schemaInfo)
-	migrateToV2(migrator, &schemaInfo)
+	migrateToV3(migrator, &schemaInfo)
 }
 
 func migrateToV2(migrator gorm.Migrator, info *SchemaInfo) {
@@ -57,6 +57,10 @@ func migrateToV2(migrator gorm.Migrator, info *SchemaInfo) {
 }
 
 func migrateToV3(migrator gorm.Migrator, info *SchemaInfo) {
+	if info.Version >= 3 {
+		return
+	}
+
 	columnsToAdd := []string{
 		"notes_enabled",
 		"journals_enabled",
