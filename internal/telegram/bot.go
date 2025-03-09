@@ -184,7 +184,7 @@ func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 		ID:       summary.ID(),
 		Title:    summary.Title(),
 		UserLink: summary.From().ProfileUrl.String(),
-		UserName: summary.From().Name,
+		UserName: summary.From().Name(),
 		Content:  noteContent,
 		Link:     summary.Link().String(),
 	})
@@ -232,7 +232,7 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 		ID:       entry.ID(),
 		OnEntry:  entry.Title(),
 		UserLink: entry.From().ProfileUrl.String(),
-		UserName: entry.From().Name,
+		UserName: entry.From().Name(),
 		Content:  entryContent,
 		Link:     entry.Link().String(),
 	})

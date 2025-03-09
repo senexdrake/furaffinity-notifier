@@ -42,8 +42,9 @@ type (
 		UserID                uint
 	}
 	FurAffinityUser struct {
-		Name       string
-		ProfileUrl *url.URL
+		DisplayName string
+		UserName    string
+		ProfileUrl  *url.URL
 	}
 )
 
@@ -51,6 +52,7 @@ const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/201
 const faBaseUrl = "https://www.furaffinity.net"
 const faTimezone = "America/Los_Angeles"
 const faNoteSeparator = "—————————"
+const faDefaultUsername = "UNKNOWN"
 
 var (
 	furaffinityBaseUrl, _         = url.Parse(faBaseUrl)
@@ -128,10 +130,36 @@ func NewCollector(userId uint) *FurAffinityCollector {
 	}
 }
 
+func (fu FurAffinityUser) Name() string {
+	name := fu.DisplayName
+	if len(name) == 0 {
+		name = fu.UserName
+	}
+	return name
+}
+
+func (fu FurAffinityUser) IsValid() bool {
+	return fu.Name() != faDefaultUsername
+}
+
 func FurAffinityUrl() *url.URL {
 	return furaffinityBaseUrl
 }
 
 func trimHtmlText(s string) string {
 	return util.TrimHtmlText(s)
+}
+
+func userFromElement(e *colly.HTMLElement) FurAffinityUser {
+	if e == nil {
+		return FurAffinityUser{UserName: faDefaultUsername}
+	}
+
+	displayName := trimHtmlText(e.ChildText(".js-displayName-block"))
+	username := trimHtmlText(e.ChildText(".js-userName-block"))
+
+	return FurAffinityUser{
+		DisplayName: displayName,
+		UserName:    username,
+	}
 }

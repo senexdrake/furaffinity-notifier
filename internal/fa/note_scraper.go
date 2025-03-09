@@ -318,10 +318,8 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 		summary.date = date
 	})
 
-	noteElement.ForEach(".note-list-sender a", func(i int, e *colly.HTMLElement) {
-		user := FurAffinityUser{
-			Name: trimHtmlText(e.Text),
-		}
+	noteElement.ForEach(".note-list-sender", func(i int, e *colly.HTMLElement) {
+		user := userFromElement(e)
 
 		profileUrl, err := FurAffinityUrl().Parse(e.Attr("href"))
 		if err != nil {

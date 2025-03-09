@@ -244,8 +244,8 @@ func (fc *FurAffinityCollector) parseComment(entryType entries.EntryType, entryE
 				return true
 			}
 			comment.from = FurAffinityUser{
-				ProfileUrl: link,
-				Name:       trimHtmlText(e.Text),
+				ProfileUrl:  link,
+				DisplayName: trimHtmlText(e.Text),
 			}
 			break
 		case 1:
