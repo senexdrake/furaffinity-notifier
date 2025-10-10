@@ -2,10 +2,6 @@ package fa
 
 import (
 	"fmt"
-	"github.com/gocolly/colly/v2"
-	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
-	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"maps"
 	"net/http"
 	"net/url"
@@ -13,6 +9,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gocolly/colly/v2"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 type (
@@ -33,7 +34,7 @@ type (
 )
 
 const notesPath = "/msg/pms/"
-const notesDateLayout = "Jan 2, 2006 03:04PM"
+const notesDateLayout = "January 2, 2006 03:04:05 PM"
 
 func (ne *NoteEntry) EntryType() entries.EntryType { return entries.EntryTypeNote }
 func (ne *NoteEntry) ID() uint                     { return ne.id }
@@ -309,9 +310,20 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 	}
 
 	noteElement.ForEach(".note-list-senddate", func(i int, e *colly.HTMLElement) {
+		// Try using the data-time attribute first
+		timeAttrRaw := e.ChildAttr("span", "data-time")
+		if timeAttrRaw != "" {
+			timeAttr, err := strconv.ParseInt(timeAttrRaw, 10, 64)
+			if err == nil && timeAttr > 0 {
+				summary.date = time.Unix(timeAttr, 0)
+				return
+			}
+		}
+
 		dateString := trimHtmlText(e.Text)
 		date, err := time.ParseInLocation(notesDateLayout, dateString, fc.notesDateLocation())
 		if err != nil {
+			logging.Errorf("Error parsing note send date (no time attribute was found). Expected layout '%s', got value '%s'", notesDateLayout, dateString)
 			parseError = true
 			return
 		}
