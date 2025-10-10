@@ -1,15 +1,16 @@
 package fa
 
 import (
-	"github.com/gocolly/colly/v2"
-	"github.com/senexdrake/furaffinity-notifier/internal/db"
-	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
-	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/gocolly/colly/v2"
+	"github.com/senexdrake/furaffinity-notifier/internal/db"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 type (
@@ -49,7 +50,7 @@ type (
 	}
 )
 
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0"
+const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"
 const faBaseUrl = "https://www.furaffinity.net"
 const faTimezone = "America/Los_Angeles"
 const faNoteSeparator = "—————————"
