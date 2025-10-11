@@ -55,6 +55,7 @@ const faBaseUrl = "https://www.furaffinity.net"
 const faTimezone = "America/Los_Angeles"
 const faNoteSeparator = "—————————"
 const faDefaultUsername = "UNKNOWN"
+const requestTimeout = 30 * time.Second
 
 var (
 	furaffinityBaseUrl, _         = url.Parse(faBaseUrl)
@@ -75,7 +76,9 @@ func (fc *FurAffinityCollector) configuredCollector(withCookies bool) *colly.Col
 		colly.Async(true),
 		colly.MaxDepth(2),
 	)
+
 	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: fc.LimitConcurrency})
+	c.SetRequestTimeout(requestTimeout)
 
 	if withCookies {
 		c.SetCookies(faBaseUrl, fc.cookies())
