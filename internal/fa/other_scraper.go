@@ -2,14 +2,16 @@ package fa
 
 import (
 	"errors"
-	"github.com/gocolly/colly/v2"
-	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"net/url"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gocolly/colly/v2"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 type (
@@ -30,7 +32,7 @@ type (
 )
 
 const commentsPath = "/msg/others/"
-const entryDateLayout = "on Jan 2, 2006 03:04 PM"
+const entryDateLayout = "January 2, 2006 03:04:05 PM"
 
 func (ce *CommentEntry) EntryType() entries.EntryType { return ce.entryType }
 func (ce *CommentEntry) Date() time.Time              { return ce.date }
@@ -275,6 +277,13 @@ func (fc *FurAffinityCollector) parseComment(entryType entries.EntryType, entryE
 	}
 
 	entryElement.ForEach("span.popup_date", func(i int, e *colly.HTMLElement) {
+		// Try using the data-time attribute first
+		timeFromAttr, err := util.EpochStringToTime(e.Attr("data-time"))
+		if err == nil {
+			comment.date = timeFromAttr
+			return
+		}
+
 		dateString := trimHtmlText(e.Text)
 		date, err := time.ParseInLocation(entryDateLayout, dateString, fc.location())
 		if err != nil {

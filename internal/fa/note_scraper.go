@@ -311,13 +311,10 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 
 	noteElement.ForEach(".note-list-senddate", func(i int, e *colly.HTMLElement) {
 		// Try using the data-time attribute first
-		timeAttrRaw := e.ChildAttr("span", "data-time")
-		if timeAttrRaw != "" {
-			timeAttr, err := strconv.ParseInt(timeAttrRaw, 10, 64)
-			if err == nil && timeAttr > 0 {
-				summary.date = time.Unix(timeAttr, 0)
-				return
-			}
+		timeFromAttr, err := util.EpochStringToTime(e.ChildAttr("span", "data-time"))
+		if err == nil {
+			summary.date = timeFromAttr
+			return
 		}
 
 		dateString := trimHtmlText(e.Text)

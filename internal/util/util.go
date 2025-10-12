@@ -1,6 +1,8 @@
 package util
 
 import (
+	"errors"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -78,4 +80,17 @@ func ToUTC(time *time.Time) *time.Time {
 	}
 	utc := time.UTC()
 	return &utc
+}
+
+func EpochStringToTime(s string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, errors.New("empty epoch string")
+	}
+
+	timeAttr, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Unix(timeAttr, 0), nil
 }
