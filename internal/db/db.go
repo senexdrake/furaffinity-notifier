@@ -1,13 +1,14 @@
 package db
 
 import (
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 type (
@@ -25,6 +26,7 @@ type (
 		JournalsEnabled           bool         `gorm:"default:false;not null"`
 		KnownEntries              []KnownEntry `gorm:"constraint:OnDelete:CASCADE;"`
 		Cookies                   []UserCookie `gorm:"constraint:OnDelete:CASCADE;"`
+		Timezone                  string       `gorm:"default:'UTC';not null"`
 	}
 
 	UserCookie struct {
@@ -64,13 +66,21 @@ func (u *User) EnabledEntryTypes() []entries.EntryType {
 	return entryTypes
 }
 
+func (u *User) GetLocation() (*time.Location, error) {
+	return time.LoadLocation(u.Timezone)
+}
+
+func (u *User) SetLocation(loc *time.Location) {
+	u.Timezone = loc.String()
+}
+
 func (e *KnownEntry) BeforeSave(tx *gorm.DB) error {
 	e.NotifiedAt = util.ToUTC(e.NotifiedAt)
 	e.SentDate = e.SentDate.UTC()
 	return nil
 }
 
-const latestSchemaVersion = 3
+const latestSchemaVersion = 4
 
 var db *gorm.DB
 

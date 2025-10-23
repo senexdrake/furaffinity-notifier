@@ -3,12 +3,14 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
+	"time"
+
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
-	"slices"
-	"strings"
 )
 
 func createPrivacyPolicyCommand() *CommandHandler {
@@ -97,6 +99,43 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Success",
+	})
+}
+
+func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	convHandler.SetActiveConversationStage(update.Message.Chat.ID, stageTimezoneInput)
+
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		ParseMode: models.ParseModeHTML,
+		Text:      "Please input your timezone",
+	})
+
+}
+
+func timezoneInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	loc, err := time.LoadLocation(update.Message.Text)
+	if err != nil || loc == nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   fmt.Sprintf("The timezone you specified is invalid. Please try again.\nError: %s", err),
+		})
+		return
+	}
+
+	tx := db.Db().Begin()
+	user, _ := userFromChatId(update.Message.Chat.ID, tx)
+
+	user.SetLocation(loc)
+
+	tx.Save(user)
+	tx.Commit()
+
+	convHandler.EndConversation(update.Message.Chat.ID)
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		ParseMode: models.ParseModeHTML,
+		Text:      fmt.Sprintf("Successfully update timezone to <b>%s</b>", user.Timezone),
 	})
 }
 

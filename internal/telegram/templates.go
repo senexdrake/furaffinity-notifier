@@ -1,9 +1,10 @@
 package telegram
 
 import (
+	"html/template"
+
 	"github.com/senexdrake/furaffinity-notifier/internal/tmpl"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
-	"html/template"
 )
 
 var baseTemplate = template.Must(
@@ -31,6 +32,7 @@ This bot saves the following user information:
 
 2. Your provided user information:
 	- Unread notes setting
+	- Your timezone
 
 3. Your FurAffinity cookies 
 	- these are very sensitive, this allows the bot to fully impersonate you, which is required due to how FurAffinity works

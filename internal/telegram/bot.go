@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"os"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
@@ -13,11 +19,6 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/tmpl"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/gorm"
-	"os"
-	"slices"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var botInstance *bot.Bot
@@ -33,6 +34,7 @@ const creatorOnly = true
 const (
 	stageCookieInput = iota + 1
 	stageSettings
+	stageTimezoneInput
 )
 
 func StartBot(ctx context.Context) *bot.Bot {
@@ -47,8 +49,9 @@ func StartBot(ctx context.Context) *bot.Bot {
 	}
 
 	convHandler = NewConversationHandler(map[int]bot.HandlerFunc{
-		stageCookieInput: cookieInputHandler,
-		stageSettings:    onSettingsKeyboardSelect,
+		stageCookieInput:   cookieInputHandler,
+		stageSettings:      onSettingsKeyboardSelect,
+		stageTimezoneInput: timezoneInputHandler,
 	}, &convEnd)
 
 	opts := []bot.Option{
@@ -124,6 +127,14 @@ func commandHandlers() []*CommandHandler {
 			HandlerType: bot.HandlerTypeMessageText,
 			MatchType:   bot.MatchTypeExact,
 			HandlerFunc: cookieHandler,
+			ChatAction:  models.ChatActionTyping,
+		},
+		{
+			Pattern:     "/timezone",
+			Description: "Sets your preferred timezone",
+			HandlerType: bot.HandlerTypeMessageText,
+			MatchType:   bot.MatchTypeExact,
+			HandlerFunc: timezoneHandler,
 			ChatAction:  models.ChatActionTyping,
 		},
 		{

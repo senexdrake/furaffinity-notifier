@@ -27,6 +27,7 @@ func migrate() {
 
 	migrateToV2(migrator, &schemaInfo)
 	migrateToV3(migrator, &schemaInfo)
+	migrateToV4(migrator, &schemaInfo)
 }
 
 func migrateToV2(migrator gorm.Migrator, info *SchemaInfo) {
@@ -76,6 +77,26 @@ func migrateToV3(migrator gorm.Migrator, info *SchemaInfo) {
 	}
 	info.Version = 3
 	err := updateSchemaVersion(info.Version)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func migrateToV4(migrator gorm.Migrator, info *SchemaInfo) {
+	if info.Version >= 4 {
+		return
+	}
+	tzCol := "timezone"
+	if migrator.HasColumn(&User{}, tzCol) {
+		return
+	}
+	err := migrator.AddColumn(&User{}, tzCol)
+	if err != nil {
+		panic(err)
+	}
+
+	info.Version = 4
+	err = updateSchemaVersion(info.Version)
 	if err != nil {
 		panic(err)
 	}
