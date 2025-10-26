@@ -24,6 +24,8 @@ var newNoteMessageTemplate = template.Must(createTemplate(tmpl.TemplatePath("new
 
 var newCommentMessageTemplate = template.Must(createTemplate(tmpl.TemplatePath("new-comment.gohtml")))
 
+var newSubmissionMessageTemplate = template.Must(createTemplate(tmpl.TemplatePath("new-submission.gohtml")))
+
 var privacyPolicyTemplate = util.TrimHtmlText(`
 This bot saves the following user information:
 
@@ -46,7 +48,7 @@ Click one of the buttons to toggle it's respective settings.
 
 Current settings:
 <b>Notes</b>: %s
-<b>Submissions</b>: %s (NOT IMPLEMENTED)
+<b>Submissions</b>: %s
 <b>Submission Comments</b>: %s
 <b>Journals</b>: %s (NOT IMPLEMENTED)
 <b>Journal Comments</b>: %s

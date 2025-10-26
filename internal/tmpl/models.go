@@ -1,5 +1,7 @@
 package tmpl
 
+import "github.com/senexdrake/furaffinity-notifier/internal/fa"
+
 type (
 	NewNotesContent struct {
 		ID       uint
@@ -17,5 +19,15 @@ type (
 		UserName string
 		Content  string
 		Link     string
+	}
+
+	NewSubmissionsContent struct {
+		ID       uint
+		Title    string
+		UserLink string
+		Link     string
+		UserName string
+		Rating   fa.SubmissionRating
+		Type     fa.SubmissionType
 	}
 )

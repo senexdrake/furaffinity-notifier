@@ -11,19 +11,22 @@ const (
 	EntryTypeJournalComment
 )
 
-var nameMap = map[EntryType]string{
-	EntryTypeInvalid:           "INVALID",
-	EntryTypeNote:              "Note",
-	EntryTypeSubmission:        "Submission",
-	EntryTypeSubmissionComment: "Submission Comment",
-	EntryTypeJournal:           "Journal",
-	EntryTypeJournalComment:    "Journal Comment",
+func (e EntryType) Name() string {
+	switch e {
+	case EntryTypeNote:
+		return "Note"
+	case EntryTypeSubmission:
+		return "Submission"
+	case EntryTypeSubmissionComment:
+		return "Submission Comment"
+	case EntryTypeJournal:
+		return "Journal"
+	case EntryTypeJournalComment:
+		return "Journal Comment"
+	}
+	panic("unreachable")
 }
 
-func (e EntryType) Name() string {
-	name, found := nameMap[e]
-	if !found {
-		return nameMap[EntryTypeInvalid]
-	}
-	return name
+func (e EntryType) String() string {
+	return e.Name()
 }

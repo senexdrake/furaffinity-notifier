@@ -231,6 +231,57 @@ func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 	})
 }
 
+func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
+	buf := new(bytes.Buffer)
+	err := newSubmissionMessageTemplate.Execute(buf, &tmpl.NewSubmissionsContent{
+		ID:       submission.ID(),
+		Title:    submission.Title(),
+		UserLink: submission.From().ProfileUrl.String(),
+		Link:     submission.Link().String(),
+		UserName: submission.From().UserName,
+		Rating:   submission.Rating(),
+		Type:     submission.Type(),
+	})
+
+	if err != nil {
+		logging.Errorf("error writing new submissions template: %v", err)
+		return
+	}
+
+	linkPreviewDisabled := true
+	var linkPreviewUrl *string
+
+	if submission.Thumbnail() != nil {
+		linkPreviewDisabled = false
+		tmpUrl := submission.Thumbnail().String()
+		linkPreviewUrl = &tmpUrl
+	}
+
+	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
+		ChatID:    user.TelegramChatId,
+		ParseMode: models.ParseModeHTML,
+		Text:      buf.String(),
+		LinkPreviewOptions: &models.LinkPreviewOptions{
+			IsDisabled: &linkPreviewDisabled,
+			URL:        linkPreviewUrl,
+		},
+	})
+
+	if err != nil {
+		logging.Errorf("error sending submission notification: %v", err)
+		return
+	}
+
+	notifiedAt := time.Now()
+	db.Db().Create(&db.KnownEntry{
+		EntryType:  entries.EntryTypeSubmission,
+		ID:         submission.ID(),
+		UserID:     user.ID,
+		NotifiedAt: &notifiedAt,
+		SentDate:   submission.Date(),
+	})
+}
+
 func HandleNewEntry(entry fa.Entry, user *db.User) {
 	// TODO Implement!!!
 	entryContent := "-- NO CONTENT --"

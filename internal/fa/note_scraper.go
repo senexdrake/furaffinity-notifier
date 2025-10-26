@@ -328,7 +328,7 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 	})
 
 	noteElement.ForEach(".note-list-sender", func(i int, e *colly.HTMLElement) {
-		user := userFromElement(e)
+		user := userFromNoteElement(e)
 		summary.from = user
 	})
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -60,6 +61,7 @@ const requestTimeout = 30 * time.Second
 var (
 	furaffinityBaseUrl, _         = url.Parse(faBaseUrl)
 	furaffinityDefaultLocation, _ = time.LoadLocation(faTimezone)
+	usernameRegex                 = regexp.MustCompile(".*/user/([\\w]*)/*")
 )
 
 func (fc *FurAffinityCollector) httpClient() *http.Client {
@@ -113,15 +115,15 @@ func (fc *FurAffinityCollector) registrationDate() time.Time {
 	return fc.user().CreatedAt
 }
 
-func (fc *FurAffinityCollector) isEntryNew(entryType entries.EntryType, note uint) bool {
-	searchNote := db.KnownEntry{
+func (fc *FurAffinityCollector) isEntryNew(entryType entries.EntryType, entryId uint) bool {
+	searchEntry := db.KnownEntry{
 		EntryType: entryType,
-		ID:        note,
+		ID:        entryId,
 		UserID:    fc.UserID,
 	}
 	foundRows := make([]db.KnownEntry, 0)
 
-	db.Db().Where(&searchNote).Find(&foundRows)
+	db.Db().Where(&searchEntry).Find(&foundRows)
 
 	return len(foundRows) == 0
 }
@@ -155,7 +157,7 @@ func trimHtmlText(s string) string {
 	return util.TrimHtmlText(s)
 }
 
-func userFromElement(e *colly.HTMLElement) FurAffinityUser {
+func userFromNoteElement(e *colly.HTMLElement) FurAffinityUser {
 	if e == nil {
 		return FurAffinityUser{UserName: faDefaultUsername}
 	}
@@ -179,4 +181,44 @@ func userFromElement(e *colly.HTMLElement) FurAffinityUser {
 		UserName:    username,
 		ProfileUrl:  profileUrl,
 	}
+}
+
+func userFromSubmissionPageElement(e *colly.HTMLElement) FurAffinityUser {
+	user := FurAffinityUser{UserName: faDefaultUsername}
+	if e == nil {
+		return user
+	}
+
+	e.ForEach("figcaption a", func(i int, element *colly.HTMLElement) {
+		// The first occurrence is NOT the username
+		if i == 0 {
+			return
+		}
+
+		user.DisplayName = util.TrimHtmlText(element.Text)
+
+		href := element.Attr("href")
+		parsedUrl, err := FurAffinityUrl().Parse(href)
+		if href != "" && err == nil {
+			user.ProfileUrl = parsedUrl
+		}
+	})
+
+	if user.ProfileUrl == nil {
+		return user
+	}
+
+	user.UserName = usernameFromLink(user.ProfileUrl)
+	return user
+}
+
+func usernameFromLink(link *url.URL) string {
+	if link == nil {
+		return ""
+	}
+	matches := usernameRegex.FindStringSubmatch(link.Path)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
 }

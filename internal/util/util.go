@@ -7,11 +7,34 @@ import (
 	"time"
 )
 
-const EmojiGreenCheck = "✅"
-const EmojiCross = "❌"
+type Set[T comparable] map[T]struct{}
+
 const EnvPrefix = "FN_"
 
+const (
+	EmojiGreenCheck  = "✅"
+	EmojiCross       = "❌"
+	EmojiSquareRed   = "🟥"
+	EmojiSquareBlue  = "🟦"
+	EmojiSquareWhite = "⬜️"
+)
+
 var truthyValues = []string{"1", "true", "yes", "on", "enable"}
+
+func (s Set[T]) Add(t T) {
+	s[t] = struct{}{}
+}
+
+func (s Set[T]) AddAll(t []T) {
+	for i := range t {
+		s.Add(t[i])
+	}
+}
+
+func (s Set[T]) Contains(t T) bool {
+	_, ok := (s)[t]
+	return ok
+}
 
 func ReverseMap[M ~map[K]V, K comparable, V comparable](m M) map[V]K {
 	reversed := make(map[V]K, len(m))

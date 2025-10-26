@@ -3,13 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/joho/godotenv"
-	"github.com/senexdrake/furaffinity-notifier/internal/db"
-	"github.com/senexdrake/furaffinity-notifier/internal/fa"
-	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
-	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
-	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"os"
 	"os/signal"
 	"slices"
@@ -17,6 +10,14 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
+	"github.com/senexdrake/furaffinity-notifier/internal/db"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 const minimumUpdateInterval = 30 * time.Second
@@ -127,6 +128,12 @@ func updateForUser(user *db.User, doneCallback func()) {
 	c.OnlyUnreadNotes = user.UnreadNotesOnly
 
 	entryTypes := user.EnabledEntryTypes()
+
+	if slices.Contains(entryTypes, entries.EntryTypeSubmission) {
+		for submission := range c.GetNewSubmissionEntries() {
+			telegram.HandleNewSubmission(submission, user)
+		}
+	}
 
 	if slices.Contains(entryTypes, entries.EntryTypeNote) {
 		for note := range c.GetNewNotesWithContent() {
