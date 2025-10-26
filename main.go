@@ -130,7 +130,7 @@ func updateForUser(user *db.User, doneCallback func()) {
 	entryTypes := user.EnabledEntryTypes()
 
 	if slices.Contains(entryTypes, entries.EntryTypeSubmission) {
-		for submission := range c.GetNewSubmissionEntries() {
+		for submission := range c.GetNewSubmissionEntriesFromUsers("elkaart") {
 			telegram.HandleNewSubmission(submission, user)
 		}
 	}
