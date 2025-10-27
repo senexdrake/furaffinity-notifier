@@ -12,6 +12,7 @@ import (
 
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
@@ -24,7 +25,7 @@ type (
 		rating         SubmissionRating
 		submissionType SubmissionType
 		date           time.Time
-		thumbnail      *url.URL
+		thumbnail      *tools.ThumbnailUrl
 	}
 	SubmissionContent struct {
 	}
@@ -117,7 +118,7 @@ func (se *SubmissionEntry) Title() string {
 	return se.title
 }
 
-func (se *SubmissionEntry) Thumbnail() *url.URL {
+func (se *SubmissionEntry) Thumbnail() *tools.ThumbnailUrl {
 	return se.thumbnail
 }
 
@@ -322,7 +323,7 @@ func submissionIdFromLink(link *url.URL) uint {
 	return 0
 }
 
-func submissionThumbnail(el *colly.HTMLElement) *url.URL {
+func submissionThumbnail(el *colly.HTMLElement) *tools.ThumbnailUrl {
 	imgElement := el.DOM.Find("img")
 	if imgElement != nil {
 		src, found := imgElement.Attr("src")
@@ -337,7 +338,7 @@ func submissionThumbnail(el *colly.HTMLElement) *url.URL {
 		if parsed.Scheme == "" {
 			parsed.Scheme = "https"
 		}
-		return parsed
+		return tools.NewThumbnailUrl(parsed)
 	}
 	return nil
 }

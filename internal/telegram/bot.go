@@ -253,7 +253,7 @@ func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 
 	if submission.Thumbnail() != nil {
 		linkPreviewDisabled = false
-		tmpUrl := submission.Thumbnail().String()
+		tmpUrl := submission.Thumbnail().WithSizeLarge().String()
 		linkPreviewUrl = &tmpUrl
 	}
 
