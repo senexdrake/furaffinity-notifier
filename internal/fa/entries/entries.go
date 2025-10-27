@@ -13,6 +13,8 @@ const (
 
 func (e EntryType) Name() string {
 	switch e {
+	case EntryTypeInvalid:
+		return "INVALID"
 	case EntryTypeNote:
 		return "Note"
 	case EntryTypeSubmission:
