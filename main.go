@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -22,6 +23,8 @@ import (
 
 const minimumUpdateInterval = 30 * time.Second
 const enableOtherEntries = true
+
+var submissionUsernameFilter = make([]string, 0)
 
 func main() {
 	appContext, _ := setup()
@@ -45,6 +48,19 @@ func setup() (context.Context, context.CancelFunc) {
 
 	logging.Info("---- BOT STARTING ----")
 	logging.Info("Welcome to FurAffinity Notifier!")
+
+	rawSubmissionsUserFilter := os.Getenv(util.PrefixEnvVar("SUBMISSIONS_USER_FILTER"))
+	for _, userRaw := range strings.Split(rawSubmissionsUserFilter, ",") {
+		user := strings.TrimSpace(userRaw)
+		if user != "" {
+			submissionUsernameFilter = append(submissionUsernameFilter, user)
+		}
+	}
+
+	if len(submissionUsernameFilter) > 0 {
+		logging.Infof("Submissions user filter enabled. Configured usernames: %v", submissionUsernameFilter)
+	}
+
 	db.CreateDatabase()
 
 	appContext, cancel := signal.NotifyContext(context.Background(),
@@ -120,6 +136,13 @@ func UpdateJob() {
 	wg.Wait()
 }
 
+func submissionsChannel(collector *fa.FurAffinityCollector) <-chan *fa.SubmissionEntry {
+	if len(submissionUsernameFilter) > 0 {
+		return collector.GetNewSubmissionEntriesFromUsers(slices.Clone(submissionUsernameFilter)...)
+	}
+	return collector.GetNewSubmissionEntries()
+}
+
 func updateForUser(user *db.User, doneCallback func()) {
 	defer doneCallback()
 	logging.Debugf("Running update for user %d", user.ID)
@@ -130,7 +153,7 @@ func updateForUser(user *db.User, doneCallback func()) {
 	entryTypes := user.EnabledEntryTypes()
 
 	if slices.Contains(entryTypes, entries.EntryTypeSubmission) {
-		for submission := range c.GetNewSubmissionEntries() {
+		for submission := range submissionsChannel(c) {
 			telegram.HandleNewSubmission(submission, user)
 		}
 	}
