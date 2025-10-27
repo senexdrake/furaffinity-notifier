@@ -205,15 +205,11 @@ func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 		return
 	}
 
-	linkPreviewDisabled := true
-
 	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
-		ChatID:    user.TelegramChatId,
-		ParseMode: models.ParseModeHTML,
-		Text:      buf.String(),
-		LinkPreviewOptions: &models.LinkPreviewOptions{
-			IsDisabled: &linkPreviewDisabled,
-		},
+		ChatID:             user.TelegramChatId,
+		ParseMode:          models.ParseModeHTML,
+		Text:               buf.String(),
+		LinkPreviewOptions: defaultLinkPreviewOptions(),
 	})
 
 	if err != nil {
@@ -248,23 +244,19 @@ func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 		return
 	}
 
-	linkPreviewDisabled := true
-	var linkPreviewUrl *string
+	previewOptions := defaultLinkPreviewOptionsHelper()
 
 	if submission.Thumbnail() != nil {
-		linkPreviewDisabled = false
-		tmpUrl := submission.Thumbnail().WithSizeLarge().String()
-		linkPreviewUrl = &tmpUrl
+		previewOptions.SetDisabled(false)
+		previewOptions.SetShowAboveText(false)
+		previewOptions.SetThumbnailUrl(submission.Thumbnail().WithSizeLarge())
 	}
 
 	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
-		ChatID:    user.TelegramChatId,
-		ParseMode: models.ParseModeHTML,
-		Text:      buf.String(),
-		LinkPreviewOptions: &models.LinkPreviewOptions{
-			IsDisabled: &linkPreviewDisabled,
-			URL:        linkPreviewUrl,
-		},
+		ChatID:             user.TelegramChatId,
+		ParseMode:          models.ParseModeHTML,
+		Text:               buf.String(),
+		LinkPreviewOptions: previewOptions.Get(),
 	})
 
 	if err != nil {
@@ -304,15 +296,11 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 		return
 	}
 
-	linkPreviewDisabled := true
-
 	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
-		ChatID:    user.TelegramChatId,
-		ParseMode: models.ParseModeHTML,
-		Text:      buf.String(),
-		LinkPreviewOptions: &models.LinkPreviewOptions{
-			IsDisabled: &linkPreviewDisabled,
-		},
+		ChatID:             user.TelegramChatId,
+		ParseMode:          models.ParseModeHTML,
+		Text:               buf.String(),
+		LinkPreviewOptions: defaultLinkPreviewOptions(),
 	})
 
 	if err != nil {
