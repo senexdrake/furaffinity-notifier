@@ -2,6 +2,7 @@ package db
 
 import (
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"gorm.io/gorm"
 )
 
@@ -34,6 +35,7 @@ func migrateToV2(migrator gorm.Migrator, info *SchemaInfo) {
 	if info.Version >= 2 {
 		return
 	}
+	logging.Info("Migrating database to version 2")
 
 	// Migrate from old known_notes table to the more generalized known_entries structure
 	if migrator.HasTable("known_notes") && !migrator.HasTable(&KnownEntry{}) {
@@ -55,12 +57,14 @@ func migrateToV2(migrator gorm.Migrator, info *SchemaInfo) {
 	if err != nil {
 		panic(err)
 	}
+	logging.Info("Done")
 }
 
 func migrateToV3(migrator gorm.Migrator, info *SchemaInfo) {
 	if info.Version >= 3 {
 		return
 	}
+	logging.Info("Migrating database to version 3")
 
 	columnsToAdd := []string{
 		"notes_enabled",
@@ -80,12 +84,15 @@ func migrateToV3(migrator gorm.Migrator, info *SchemaInfo) {
 	if err != nil {
 		panic(err)
 	}
+	logging.Info("Done")
 }
 
 func migrateToV4(migrator gorm.Migrator, info *SchemaInfo) {
 	if info.Version >= 4 {
 		return
 	}
+	logging.Info("Migrating database to version 4")
+
 	tzCol := "timezone"
 	if migrator.HasColumn(&User{}, tzCol) {
 		return
@@ -100,6 +107,7 @@ func migrateToV4(migrator gorm.Migrator, info *SchemaInfo) {
 	if err != nil {
 		panic(err)
 	}
+	logging.Info("Done")
 }
 
 func updateSchemaVersion(toVersion uint) error {
