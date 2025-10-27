@@ -212,10 +212,9 @@ func (fc *FurAffinityCollector) getCommentContent(entry *CommentEntry) *CommentC
 
 	c.OnHTML(commentIdTag, func(e *colly.HTMLElement) {
 		parent := e.DOM.Parent()
-		commentText := parent.
-			Find(".comment-content .comment_text").
-			First().Text()
-		content.text = trimHtmlText(commentText)
+		commentTextElement := parent.Find(".comment-content .comment_text").First()
+		util.FixAutoLinks(commentTextElement)
+		content.text = trimHtmlText(commentTextElement.Text())
 		valid = len(content.text) > 0
 	})
 

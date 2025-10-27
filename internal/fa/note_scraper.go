@@ -216,6 +216,8 @@ func (fc *FurAffinityCollector) GetNoteContent(note uint, markUnread bool) *Note
 		dom.Find(".noteWarningMessage").Remove()
 		dom.Find(".section-options").Remove()
 
+		util.FixAutoLinks(e.DOM)
+
 		textParts := strings.Split(trimHtmlText(dom.Text()), faNoteSeparator)
 		text := ""
 		if len(textParts) > 0 {

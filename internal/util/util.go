@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type Set[T comparable] map[T]struct{}
@@ -103,6 +105,17 @@ func ToUTC(time *time.Time) *time.Time {
 	}
 	utc := time.UTC()
 	return &utc
+}
+
+func FixAutoLinks(dom *goquery.Selection) {
+	shortenedLinks := dom.Find("a.auto_link_shortened")
+	shortenedLinks.Each(func(i int, sel *goquery.Selection) {
+		href, found := sel.Attr("href")
+		if !found || href == "" {
+			return
+		}
+		sel.SetText(href)
+	})
 }
 
 func EpochStringToTime(s string) (time.Time, error) {
