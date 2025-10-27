@@ -230,13 +230,14 @@ func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 	buf := new(bytes.Buffer)
 	err := newSubmissionMessageTemplate.Execute(buf, &tmpl.NewSubmissionsContent{
-		ID:       submission.ID(),
-		Title:    submission.Title(),
-		UserLink: submission.From().ProfileUrl.String(),
-		Link:     submission.Link().String(),
-		UserName: submission.From().UserName,
-		Rating:   submission.Rating(),
-		Type:     submission.Type(),
+		ID:          submission.ID(),
+		Title:       submission.Title(),
+		Description: submission.Description(),
+		UserLink:    submission.From().ProfileUrl.String(),
+		Link:        submission.Link().String(),
+		UserName:    submission.From().UserName,
+		Rating:      submission.Rating(),
+		Type:        submission.Type(),
 	})
 
 	if err != nil {

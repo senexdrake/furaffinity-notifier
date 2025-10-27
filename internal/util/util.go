@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"html"
 	"strconv"
 	"strings"
 	"time"
@@ -116,6 +117,10 @@ func FixAutoLinks(dom *goquery.Selection) {
 		}
 		sel.SetText(href)
 	})
+}
+
+func UnescapeHtml(s string) string {
+	return html.UnescapeString(s)
 }
 
 func EpochStringToTime(s string) (time.Time, error) {

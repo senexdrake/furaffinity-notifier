@@ -22,12 +22,13 @@ type (
 	}
 
 	NewSubmissionsContent struct {
-		ID       uint
-		Title    string
-		UserLink string
-		Link     string
-		UserName string
-		Rating   fa.SubmissionRating
-		Type     fa.SubmissionType
+		ID          uint
+		Title       string
+		UserLink    string
+		Link        string
+		UserName    string
+		Description string
+		Rating      fa.SubmissionRating
+		Type        fa.SubmissionType
 	}
 )

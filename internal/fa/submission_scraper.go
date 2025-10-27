@@ -1,6 +1,7 @@
 package fa
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -26,9 +27,19 @@ type (
 		submissionType SubmissionType
 		date           time.Time
 		thumbnail      *tools.ThumbnailUrl
+		submissionData *SubmissionData
 	}
 	SubmissionContent struct {
 	}
+
+	SubmissionData struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Username    string `json:"username"`
+		Lower       string `json:"lower"`
+		AvatarMTime uint   `json:"avatar_mtime,string"`
+	}
+	SubmissionDataMap map[uint]*SubmissionData
 )
 
 type SubmissionRating uint8
@@ -118,8 +129,20 @@ func (se *SubmissionEntry) Title() string {
 	return se.title
 }
 
+func (se *SubmissionEntry) Description() string {
+	data := se.SubmissionData()
+	if data == nil {
+		return ""
+	}
+	return data.Description
+}
+
 func (se *SubmissionEntry) Thumbnail() *tools.ThumbnailUrl {
 	return se.thumbnail
+}
+
+func (se *SubmissionEntry) SubmissionData() *SubmissionData {
+	return se.submissionData
 }
 
 func (se *SubmissionEntry) Content() EntryContent {
@@ -146,24 +169,33 @@ func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 
 	channel := make(chan *SubmissionEntry)
 
-	c.OnHTML("#messagecenter-submissions .notifications-by-date", func(e *colly.HTMLElement) {
-		date, err := submissionSectionDate(e)
-		if err != nil {
-			logging.Warnf("Error parsing submission section date: %s", err)
-			date = time.Time{}
-		}
+	c.OnHTML("#site-content", func(siteElement *colly.HTMLElement) {
 
-		// Return when submission has been sent before this user registered and the option
-		// to only notify about newer submissions has been set
-		if fc.OnlySinceRegistration && date.Before(userRegistrationDate) {
-			return
-		}
+		rawSubmissionData := siteElement.DOM.Find("#js-submissionData").First().Text()
+		submissionData := parseSubmissionData(rawSubmissionData)
 
-		fc.submissionHandlerWrapper(
-			channel,
-			e,
-			date,
-		)
+		println(submissionData)
+		siteElement.ForEach("#messagecenter-submissions .notifications-by-date", func(i int, e *colly.HTMLElement) {
+			date, err := submissionSectionDate(e)
+			if err != nil {
+				logging.Warnf("Error parsing submission section date: %s", err)
+				date = time.Time{}
+			}
+
+			// Return when submission has been sent before this user registered and the option
+			// to only notify about newer submissions has been set
+			if fc.OnlySinceRegistration && date.Before(userRegistrationDate) {
+				return
+			}
+
+			fc.submissionHandlerWrapper(
+				channel,
+				e,
+				date,
+				submissionData,
+			)
+		})
+
 	})
 
 	link, _ := FurAffinityUrl().Parse(submissionsPath)
@@ -181,6 +213,7 @@ func (fc *FurAffinityCollector) submissionHandlerWrapper(
 	channel chan<- *SubmissionEntry,
 	baseElement *colly.HTMLElement,
 	date time.Time,
+	submissionData SubmissionDataMap,
 ) {
 
 	wg := sync.WaitGroup{}
@@ -191,9 +224,13 @@ func (fc *FurAffinityCollector) submissionHandlerWrapper(
 		defer wg.Done()
 
 		entry, err := fc.parseSubmission(el, date)
-		if err != nil {
+		if err != nil || entry == nil {
 			logging.Warnf("Error parsing submission: %s", err)
 			return
+		}
+		data, found := submissionData[entry.ID()]
+		if found {
+			entry.submissionData = data
 		}
 		channel <- entry
 	})
@@ -341,4 +378,30 @@ func submissionThumbnail(el *colly.HTMLElement) *tools.ThumbnailUrl {
 		return tools.NewThumbnailUrl(parsed)
 	}
 	return nil
+}
+
+func parseSubmissionData(jsonData string) SubmissionDataMap {
+	// First, unmarshal into map[string]SubmissionData to preserve the string keys
+	var rawData map[string]*SubmissionData
+	if err := json.Unmarshal([]byte(jsonData), &rawData); err != nil {
+		logging.Errorf("Error unmarshaling submission data: %s", err)
+		return make(SubmissionDataMap)
+	}
+
+	// Convert the string keys (submission IDs) to uint
+	result := make(SubmissionDataMap, len(rawData))
+	for idStr, data := range rawData {
+		id, err := strconv.ParseUint(idStr, 10, 64)
+		if err != nil {
+			logging.Warnf("Error parsing submission ID '%s': %s", idStr, err)
+			continue
+		}
+
+		data.Description = strings.TrimSpace(util.UnescapeHtml(data.Description))
+		data.Title = strings.TrimSpace(util.UnescapeHtml(data.Title))
+
+		result[uint(id)] = data
+	}
+
+	return result
 }
