@@ -55,5 +55,9 @@ Current settings:
 `)
 
 func templateFuncMap() template.FuncMap {
-	return template.FuncMap{}
+	return template.FuncMap{
+		"truncateContent": func(content string) string {
+			return truncateMessage(content)
+		},
+	}
 }

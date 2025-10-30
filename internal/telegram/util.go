@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 type linkPreviewOptionsHelper struct {
@@ -67,4 +68,8 @@ func (lpoh *linkPreviewOptionsHelper) ClearShowAboveText() *linkPreviewOptionsHe
 
 func (lpoh *linkPreviewOptionsHelper) Get() *models.LinkPreviewOptions {
 	return &lpoh.LinkPreviewOptions
+}
+
+func truncateMessage(message string) string {
+	return util.TruncateStringWholeWords(message, maxMessageContentLength)
 }

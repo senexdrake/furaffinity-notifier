@@ -31,6 +31,11 @@ var telegramCreatorId = 0
 
 const creatorOnly = true
 
+// maxMessageContentLength is the maximum length of a message that can be sent to Telegram.
+// The limit of a message is 4096 UTF-8 characters, but we have to take into account the whole template. Safer to
+// use a smaller number.
+const maxMessageContentLength = 3072
+
 const (
 	stageCookieInput = iota + 1
 	stageSettings

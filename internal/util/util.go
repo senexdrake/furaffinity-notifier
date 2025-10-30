@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -134,4 +135,23 @@ func EpochStringToTime(s string) (time.Time, error) {
 	}
 
 	return time.Unix(timeAttr, 0), nil
+}
+
+func TruncateStringWholeWords(s string, maxLength int) string {
+	lastSpaceIx := -1
+	length := 0
+	for i, r := range s {
+		if unicode.IsSpace(r) {
+			lastSpaceIx = i
+		}
+		length++
+		if length >= maxLength {
+			if lastSpaceIx != -1 {
+				return s[:lastSpaceIx] + "..."
+			}
+			// If here, s is longer than maxLength but has no spaces
+		}
+	}
+	// If here, s is shorter than maxLength
+	return s
 }
