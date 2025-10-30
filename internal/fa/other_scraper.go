@@ -2,6 +2,7 @@ package fa
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"slices"
 	"strconv"
@@ -29,9 +30,30 @@ type (
 		id   uint
 		text string
 	}
+
+	JournalEntry struct {
+		id      uint
+		title   string
+		from    FurAffinityUser
+		date    time.Time
+		link    *url.URL
+		content *JournalContent
+	}
+
+	JournalContent struct {
+		id   uint
+		text string
+	}
+
+	message struct {
+		title string
+		from  FurAffinityUser
+		date  time.Time
+		link  *url.URL
+	}
 )
 
-const commentsPath = "/msg/others/"
+const otherMessagesPath = "/msg/others/"
 const entryDateLayout = "January 2, 2006 03:04:05 PM"
 
 func (ce *CommentEntry) EntryType() entries.EntryType { return ce.entryType }
@@ -54,6 +76,28 @@ func (ce *CommentEntry) HasContent() bool { return ce.content != nil }
 
 func (cc *CommentContent) ID() uint     { return cc.id }
 func (cc *CommentContent) Text() string { return cc.text }
+
+func (je *JournalEntry) ID() uint                     { return je.id }
+func (je *JournalEntry) Title() string                { return je.title }
+func (je *JournalEntry) From() FurAffinityUser        { return je.from }
+func (je *JournalEntry) EntryType() entries.EntryType { return entries.EntryTypeJournal }
+func (je *JournalEntry) Link() *url.URL               { return je.link }
+func (je *JournalEntry) Content() EntryContent        { return je.content }
+func (je *JournalEntry) SetContent(ec EntryContent) {
+	switch ec.(type) {
+	case *JournalContent:
+		je.content = ec.(*JournalContent)
+		return
+	default:
+		panic("unknown content type")
+	}
+}
+func (je *JournalEntry) Date() time.Time { return je.date }
+
+func (jc *JournalContent) ID() uint     { return jc.id }
+func (jc *JournalContent) Text() string { return jc.text }
+
+func (je *JournalEntry) HasContent() bool { return je.Content() != nil }
 
 func (fc *FurAffinityCollector) otherCollector() *colly.Collector {
 	c := fc.configuredCollector(true)
@@ -96,7 +140,7 @@ func (fc *FurAffinityCollector) GetOtherEntries(entryTypes ...entries.EntryType)
 			return
 		}
 		handlerFunc := func(channel chan<- Entry, wg *sync.WaitGroup, element *colly.HTMLElement) Entry {
-			parsed, err := fc.parseComment(entryType, element)
+			parsed, err := fc.parseCommentEntry(entryType, element)
 			if err != nil {
 				return nil
 			}
@@ -116,7 +160,7 @@ func (fc *FurAffinityCollector) GetOtherEntries(entryTypes ...entries.EntryType)
 			return
 		}
 		handlerFunc := func(channel chan<- Entry, wg *sync.WaitGroup, element *colly.HTMLElement) Entry {
-			parsed, err := fc.parseComment(entryType, element)
+			parsed, err := fc.parseCommentEntry(entryType, element)
 			if err != nil {
 				return nil
 			}
@@ -130,7 +174,26 @@ func (fc *FurAffinityCollector) GetOtherEntries(entryTypes ...entries.EntryType)
 		)
 	})
 
-	link, _ := FurAffinityUrl().Parse(commentsPath)
+	c.OnHTML("#messages-journals", func(e *colly.HTMLElement) {
+		if !slices.Contains(entryTypes, entries.EntryTypeJournal) {
+			return
+		}
+		handlerFunc := func(channel chan<- Entry, wg *sync.WaitGroup, element *colly.HTMLElement) Entry {
+			parsed, err := fc.parseJournalEntry(element)
+			if err != nil {
+				return nil
+			}
+			return parsed
+		}
+
+		fc.entryHandlerWrapper(
+			channel,
+			e,
+			handlerFunc,
+		)
+	})
+
+	link, _ := FurAffinityUrl().Parse(otherMessagesPath)
 
 	go func() {
 		defer close(channel)
@@ -195,6 +258,8 @@ func (fc *FurAffinityCollector) GetOtherEntryContent(entry Entry) EntryContent {
 	switch entry.(type) {
 	case *CommentEntry:
 		return fc.getCommentContent(entry.(*CommentEntry))
+	case *JournalEntry:
+		return fc.getJournalContent(entry.(*JournalEntry))
 	}
 	return nil
 }
@@ -228,43 +293,44 @@ func (fc *FurAffinityCollector) getCommentContent(entry *CommentEntry) *CommentC
 	return &content
 }
 
-func (fc *FurAffinityCollector) parseComment(entryType entries.EntryType, entryElement *colly.HTMLElement) (*CommentEntry, error) {
+func (fc *FurAffinityCollector) getJournalContent(entry *JournalEntry) *JournalContent {
+	c := fc.otherCollector()
+
+	content := JournalContent{id: entry.ID()}
+
+	valid := false
+
+	c.OnHTML("#site-content .journal-content", func(e *colly.HTMLElement) {
+		util.FixAutoLinks(e.DOM)
+		content.text = trimHtmlText(e.DOM.Text())
+		valid = len(content.text) > 0
+	})
+
+	c.Visit(entry.Link().String())
+	c.Wait()
+
+	if !valid {
+		return nil
+	}
+
+	return &content
+}
+
+func (fc *FurAffinityCollector) parseCommentEntry(entryType entries.EntryType, entryElement *colly.HTMLElement) (*CommentEntry, error) {
+	msg, msgParseError := fc.parseMessage(entryType, entryElement)
+	if msgParseError != nil {
+		return nil, msgParseError
+	}
+
 	comment := CommentEntry{
 		entryType: entryType,
+		date:      msg.date,
+		from:      msg.from,
+		link:      msg.link,
+		title:     msg.title,
 	}
 
 	parseError := false
-
-	entryElement.ForEachWithBreak("a", func(i int, e *colly.HTMLElement) bool {
-		switch i {
-		case 0:
-			// First link is the user
-			link, err := FurAffinityUrl().Parse(e.Attr("href"))
-			if err != nil {
-				parseError = true
-				return true
-			}
-			comment.from = FurAffinityUser{
-				ProfileUrl:  link,
-				DisplayName: trimHtmlText(e.Text),
-			}
-			break
-		case 1:
-			// Second link is the target
-			link, err := FurAffinityUrl().Parse(e.Attr("href"))
-			if err != nil {
-				parseError = true
-				return true
-			}
-			comment.link = link
-			comment.title = trimHtmlText(e.Text)
-			break
-		default:
-			return false
-		}
-
-		return true
-	})
 
 	if comment.link != nil {
 		id, err := commentIdFromFragment(comment.link.Fragment)
@@ -274,23 +340,6 @@ func (fc *FurAffinityCollector) parseComment(entryType entries.EntryType, entryE
 			comment.id = id
 		}
 	}
-
-	entryElement.ForEach("span.popup_date", func(i int, e *colly.HTMLElement) {
-		// Try using the data-time attribute first
-		timeFromAttr, err := util.EpochStringToTime(e.Attr("data-time"))
-		if err == nil {
-			comment.date = timeFromAttr
-			return
-		}
-
-		dateString := trimHtmlText(e.Text)
-		date, err := time.ParseInLocation(entryDateLayout, dateString, fc.location())
-		if err != nil {
-			parseError = true
-			return
-		}
-		comment.date = date
-	})
 
 	if parseError {
 		return nil, errors.New("error parsing submission comment")
@@ -303,6 +352,119 @@ func commentIdFromFragment(fragment string) (uint, error) {
 	idStr := strings.TrimPrefix(fragment, "cid:")
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	return uint(id), err
+}
+
+func (fc *FurAffinityCollector) parseJournalEntry(entryElement *colly.HTMLElement) (*JournalEntry, error) {
+	msg, msgParseError := fc.parseMessage(entries.EntryTypeJournal, entryElement)
+	if msgParseError != nil {
+		return nil, msgParseError
+	}
+
+	journal := JournalEntry{
+		date:  msg.date,
+		from:  msg.from,
+		link:  msg.link,
+		title: msg.title,
+	}
+
+	parseError := false
+
+	if journal.link != nil {
+		id, err := journalIdFromLink(journal.link)
+		if err != nil {
+			parseError = true
+		} else {
+			journal.id = id
+		}
+	}
+
+	if parseError {
+		return nil, errors.New("error parsing journal")
+	}
+
+	return &journal, nil
+}
+
+func journalIdFromLink(link *url.URL) (uint, error) {
+	if link == nil {
+		return 0, errors.New("journal link is nil")
+	}
+	matches := journalIdRegex.FindStringSubmatch(link.Path)
+	if len(matches) > 1 {
+		id, err := strconv.ParseUint(matches[1], 10, 64)
+		if err == nil {
+			return uint(id), nil
+		}
+		return 0, errors.New(fmt.Sprintf("error parsing journal ID '%s': %s", matches[1], err))
+	}
+	return 0, errors.New(fmt.Sprintf("no journal ID found in link '%s'", link.String()))
+
+}
+
+func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryElement *colly.HTMLElement) (*message, error) {
+	msg := message{}
+	parseError := false
+
+	indexAuthor := 0
+	indexTitle := 1
+
+	switch entryType {
+	case entries.EntryTypeJournal:
+		indexAuthor = 1
+		indexTitle = 0
+		break
+	default:
+	}
+
+	entryElement.ForEachWithBreak("a", func(i int, e *colly.HTMLElement) bool {
+		if i == indexAuthor {
+			// This link is the user
+			link, err := FurAffinityUrl().Parse(e.Attr("href"))
+			if err != nil {
+				parseError = true
+				return true
+			}
+			msg.from = FurAffinityUser{
+				ProfileUrl:  link,
+				DisplayName: trimHtmlText(e.Text),
+			}
+		} else if i == indexTitle {
+			// This is the title
+			link, err := FurAffinityUrl().Parse(e.Attr("href"))
+			if err != nil {
+				parseError = true
+				return true
+			}
+			msg.link = link
+			msg.title = trimHtmlText(e.Text)
+		} else {
+			return false
+		}
+
+		return true
+	})
+
+	entryElement.ForEach("span.popup_date", func(i int, e *colly.HTMLElement) {
+		// Try using the data-time attribute first
+		timeFromAttr, err := util.EpochStringToTime(e.Attr("data-time"))
+		if err == nil {
+			msg.date = timeFromAttr
+			return
+		}
+
+		dateString := trimHtmlText(e.Text)
+		date, err := time.ParseInLocation(entryDateLayout, dateString, fc.location())
+		if err != nil {
+			parseError = true
+			return
+		}
+		msg.date = date
+	})
+
+	if parseError {
+		return nil, errors.New("error parsing message")
+	}
+	return &msg, nil
 }
 
 func (fc *FurAffinityCollector) location() *time.Location {

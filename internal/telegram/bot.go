@@ -281,32 +281,59 @@ func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 }
 
 func HandleNewEntry(entry fa.Entry, user *db.User) {
-	// TODO Implement!!!
 	entryContent := "-- NO CONTENT --"
 	if entry.HasContent() {
 		entryContent = entry.Content().Text()
 	}
 
 	buf := new(bytes.Buffer)
-	err := newCommentMessageTemplate.Execute(buf, &tmpl.NewCommentsContent{
-		ID:       entry.ID(),
-		OnEntry:  entry.Title(),
-		UserLink: entry.From().ProfileUrl.String(),
-		UserName: entry.From().Name(),
-		Content:  entryContent,
-		Link:     entry.Link().String(),
-	})
+	linkPreviewOptions := defaultLinkPreviewOptionsHelper()
 
-	if err != nil {
-		logging.Errorf("error writing new comments template: %v", err)
+	switch entry.EntryType() {
+	case entries.EntryTypeJournal:
+		err := newJournalMessageTemplate.Execute(buf, &tmpl.NewJournalsContent{
+			ID:       entry.ID(),
+			Title:    entry.Title(),
+			UserLink: entry.From().ProfileUrl.String(),
+			UserName: entry.From().Name(),
+			Content:  entryContent,
+			Link:     entry.Link().String(),
+		})
+
+		if err != nil {
+			logging.Errorf("error writing new journals template: %v", err)
+			return
+		}
+
+		linkPreviewOptions.SetDisabled(false)
+		linkPreviewOptions.SetUrl(entry.Link())
+
+		break
+	case entries.EntryTypeJournalComment:
+	case entries.EntryTypeSubmissionComment:
+		err := newCommentMessageTemplate.Execute(buf, &tmpl.NewCommentsContent{
+			ID:       entry.ID(),
+			OnEntry:  entry.Title(),
+			UserLink: entry.From().ProfileUrl.String(),
+			UserName: entry.From().Name(),
+			Content:  entryContent,
+			Link:     entry.Link().String(),
+		})
+
+		if err != nil {
+			logging.Errorf("error writing new comments template: %v", err)
+			return
+		}
+	default:
+		logging.Errorf("unknown entry type in HandleNewEntry: %s", entry.EntryType())
 		return
 	}
 
-	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
+	_, err := botInstance.SendMessage(botContext, &bot.SendMessageParams{
 		ChatID:             user.TelegramChatId,
 		ParseMode:          models.ParseModeHTML,
 		Text:               buf.String(),
-		LinkPreviewOptions: defaultLinkPreviewOptions(),
+		LinkPreviewOptions: linkPreviewOptions.Get(),
 	})
 
 	if err != nil {

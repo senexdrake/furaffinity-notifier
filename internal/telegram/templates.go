@@ -26,6 +26,8 @@ var newCommentMessageTemplate = template.Must(createTemplate(tmpl.TemplatePath("
 
 var newSubmissionMessageTemplate = template.Must(createTemplate(tmpl.TemplatePath("new-submission.gohtml")))
 
+var newJournalMessageTemplate = template.Must(createTemplate(tmpl.TemplatePath("new-journal.gohtml")))
+
 var privacyPolicyTemplate = util.TrimHtmlText(`
 This bot saves the following user information:
 
@@ -50,7 +52,7 @@ Current settings:
 <b>Notes</b>: %s
 <b>Submissions</b>: %s
 <b>Submission Comments</b>: %s
-<b>Journals</b>: %s (NOT IMPLEMENTED)
+<b>Journals</b>: %s
 <b>Journal Comments</b>: %s
 `)
 

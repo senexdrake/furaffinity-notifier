@@ -21,6 +21,15 @@ type (
 		Link     string
 	}
 
+	NewJournalsContent struct {
+		ID       uint
+		Title    string
+		UserLink string
+		UserName string
+		Content  string
+		Link     string
+	}
+
 	NewSubmissionsContent struct {
 		ID          uint
 		Title       string
