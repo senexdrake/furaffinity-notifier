@@ -143,23 +143,18 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 	case entries.EntryTypeNote:
 		user.NotesEnabled = !user.NotesEnabled
 		typeEnabled = user.NotesEnabled
-		break
 	case entries.EntryTypeSubmission:
 		user.SubmissionsEnabled = !user.SubmissionsEnabled
 		typeEnabled = user.SubmissionsEnabled
-		break
 	case entries.EntryTypeSubmissionComment:
 		user.SubmissionCommentsEnabled = !user.SubmissionCommentsEnabled
 		typeEnabled = user.SubmissionCommentsEnabled
-		break
 	case entries.EntryTypeJournal:
 		user.JournalsEnabled = !user.JournalsEnabled
 		typeEnabled = user.JournalsEnabled
-		break
 	case entries.EntryTypeJournalComment:
 		user.JournalCommentsEnabled = !user.JournalCommentsEnabled
 		typeEnabled = user.JournalCommentsEnabled
-		break
 	default:
 		return
 	}

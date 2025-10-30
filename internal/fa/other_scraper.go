@@ -69,7 +69,6 @@ func (ce *CommentEntry) SetContent(ec EntryContent) {
 	switch ec.(type) {
 	case *CommentContent:
 		ce.content = ec.(*CommentContent)
-		return
 	default:
 		panic("unknown content type")
 	}
@@ -89,7 +88,6 @@ func (je *JournalEntry) SetContent(ec EntryContent) {
 	switch ec.(type) {
 	case *JournalContent:
 		je.content = ec.(*JournalContent)
-		return
 	default:
 		panic("unknown content type")
 	}
@@ -428,7 +426,6 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 	case entries.EntryTypeJournal:
 		indexAuthor = 1
 		indexTitle = 0
-		break
 	default:
 	}
 

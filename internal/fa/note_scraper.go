@@ -47,7 +47,6 @@ func (ne *NoteEntry) SetContent(ec EntryContent) {
 	switch ec.(type) {
 	case *NoteContent:
 		ne.content = ec.(*NoteContent)
-		return
 	default:
 		panic("unknown content type")
 	}
