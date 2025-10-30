@@ -23,6 +23,7 @@ import (
 
 const minimumUpdateInterval = 30 * time.Second
 const enableOtherEntries = true
+const enableSubmissions = true
 
 var submissionUsernameFilter = make([]string, 0)
 
@@ -152,15 +153,15 @@ func updateForUser(user *db.User, doneCallback func()) {
 
 	entryTypes := user.EnabledEntryTypes()
 
-	if slices.Contains(entryTypes, entries.EntryTypeSubmission) {
-		for submission := range submissionsChannel(c) {
-			telegram.HandleNewSubmission(submission, user)
-		}
-	}
-
 	if slices.Contains(entryTypes, entries.EntryTypeNote) {
 		for note := range c.GetNewNotesWithContent() {
 			telegram.HandleNewNote(note, user)
+		}
+	}
+
+	if enableSubmissions && slices.Contains(entryTypes, entries.EntryTypeSubmission) {
+		for submission := range submissionsChannel(c) {
+			telegram.HandleNewSubmission(submission, user)
 		}
 	}
 
