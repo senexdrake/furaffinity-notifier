@@ -307,9 +307,7 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 
 		linkPreviewOptions.SetDisabled(false)
 		linkPreviewOptions.SetUrl(entry.Link())
-	case entries.EntryTypeJournalComment:
-		fallthrough
-	case entries.EntryTypeSubmissionComment:
+	case entries.EntryTypeJournalComment, entries.EntryTypeSubmissionComment:
 		err := newCommentMessageTemplate.Execute(buf, &tmpl.NewCommentsContent{
 			ID:       entry.ID(),
 			OnEntry:  entry.Title(),
