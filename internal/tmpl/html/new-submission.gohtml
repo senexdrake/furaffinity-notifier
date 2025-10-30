@@ -2,7 +2,7 @@
 {{.Rating.Symbol}} New {{.Type.String}} submission on FurAffinity from <a href="{{.UserLink}}">{{.UserName}}</a>!
 ---------------------------------
 <b>{{.Title}}</b>
-{{if .Description}}<blockquote expandable>{{truncateContent .Description}}</blockquote>{{end}}
+{{if .Description}}<blockquote expandable>{{formatContent .Description}}</blockquote>{{end}}
 ---------------------------------
 <a href="{{.Link}}">Open</a>
 (Submission ID: <code>{{.ID}}</code>)
