@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"slices"
@@ -29,17 +28,7 @@ const enableUserFilters = true
 
 var entryUserFilters = make(map[entries.EntryType][]string)
 
-func main() {
-	appContext, _ := setup()
-	_ = telegram.StartBot(appContext)
-
-	go StartBackgroundUpdates(appContext, updateInterval())
-
-	<-appContext.Done()
-	logging.Info("Bot exiting!")
-}
-
-func setup() (context.Context, context.CancelFunc) {
+func init() {
 	dotenvErr := godotenv.Load()
 	logLevelErr := logging.SetLogLevelFromEnvironment(util.PrefixEnvVar("LOG_LEVEL"))
 	if dotenvErr != nil {
@@ -49,7 +38,7 @@ func setup() (context.Context, context.CancelFunc) {
 		logging.Errorf("error setting log level: %v", logLevelErr)
 	}
 
-	logging.Info("---- BOT STARTING ----")
+	logging.Info("---- SETTING UP BOT ----")
 	logging.Info("Welcome to FurAffinity Notifier!")
 
 	if enableUserFilters {
@@ -65,33 +54,25 @@ func setup() (context.Context, context.CancelFunc) {
 			}
 		}
 	}
+}
 
+func main() {
 	db.CreateDatabase()
-
 	appContext, cancel := signal.NotifyContext(context.Background(),
 		os.Interrupt,
 		os.Kill,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 	)
+	defer cancel()
 
-	return appContext, cancel
-}
+	logging.Infof("Starting Bot...")
+	_ = telegram.StartBot(appContext)
 
-func test() {
-	user := db.User{}
-	user.ID = 1
-	db.Db().First(&user)
-	c := fa.NewCollector(user.ID)
-	c.LimitConcurrency = 4
-	c.OnlyUnreadNotes = user.UnreadNotesOnly
-	c.OnlySinceRegistration = false
+	go StartBackgroundUpdates(appContext, updateInterval())
 
-	entryChannel := c.GetNewOtherEntries(entries.EntryTypeJournalComment, entries.EntryTypeSubmissionComment)
-
-	for entry := range entryChannel {
-		fmt.Println(entry)
-	}
+	<-appContext.Done()
+	logging.Info("Bot exiting!")
 }
 
 func updateInterval() time.Duration {
@@ -150,9 +131,7 @@ func userFiltersForEntryType(entryType entries.EntryType) []string {
 		envVar = "JOURNALS_USER_FILTER"
 	case entries.EntryTypeNote:
 		envVar = "NOTES_USER_FILTER"
-	case entries.EntryTypeJournalComment:
-		fallthrough
-	case entries.EntryTypeSubmissionComment:
+	case entries.EntryTypeJournalComment, entries.EntryTypeSubmissionComment:
 		envVar = "COMMENTS_USER_FILTER"
 	case entries.EntryTypeInvalid:
 	default:

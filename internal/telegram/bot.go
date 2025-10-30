@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"os"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/tmpl"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/gorm"
@@ -27,15 +26,6 @@ var privacyPolicyCommand = createPrivacyPolicyCommand()
 
 var convHandler *ConversationHandler
 
-var telegramCreatorId = 0
-
-const creatorOnly = true
-
-// maxMessageContentLength is the maximum length of a message that can be sent to Telegram.
-// The limit of a message is 4096 UTF-8 characters, but we have to take into account the whole template. Safer to
-// use a smaller number.
-const maxMessageContentLength = 3072
-
 const (
 	stageCookieInput = iota + 1
 	stageSettings
@@ -43,7 +33,7 @@ const (
 )
 
 func StartBot(ctx context.Context) *bot.Bot {
-	telegramCreatorId, _ = strconv.Atoi(os.Getenv(util.PrefixEnvVar("TELEGRAM_CREATOR_ID")))
+	conf.Setup()
 
 	var botContextCancel context.CancelFunc
 	botContext, botContextCancel = context.WithCancel(ctx)
@@ -65,12 +55,7 @@ func StartBot(ctx context.Context) *bot.Bot {
 		bot.WithMiddlewares(middlewares()...),
 	}
 
-	botToken := os.Getenv(util.PrefixEnvVar("TELEGRAM_BOT_TOKEN"))
-	if botToken == "" {
-		panic("No Telegram bot token has been set")
-	}
-
-	b, err := bot.New(botToken, opts...)
+	b, err := bot.New(conf.BotToken, opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -97,8 +82,8 @@ func middlewares() []bot.Middleware {
 		convHandler.CreateHandlerMiddleware(),
 	}
 
-	if creatorOnly && telegramCreatorId > 0 {
-		// Prepend creator only middleware to make sure it gets evaluated first
+	if conf.CreatorOnly && conf.TelegramCreatorId > 0 {
+		// Prepend creator-only middleware to make sure it gets evaluated first
 		m = append([]bot.Middleware{creatorOnlyMiddleware}, m...)
 	}
 
@@ -395,7 +380,7 @@ func creatorOnlyMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 			return
 		}
 
-		if int64(telegramCreatorId) != chatId {
+		if conf.TelegramCreatorId != chatId {
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: chatId,
 				Text:   "This bot is not yet available for the public. If you are interested, please contact this bot's creator (see bot description)",

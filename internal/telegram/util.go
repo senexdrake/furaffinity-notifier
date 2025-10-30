@@ -2,12 +2,10 @@ package telegram
 
 import (
 	"net/url"
-	"os"
-	"strconv"
 
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -73,29 +71,6 @@ func (lpoh *linkPreviewOptionsHelper) Get() *models.LinkPreviewOptions {
 	return &lpoh.LinkPreviewOptions
 }
 
-const defaultMessageContentLength uint = maxMessageContentLength
-
-var messageContentLength = readMessageContentLength()
-
-func readMessageContentLength() uint {
-	rawLength := os.Getenv(util.PrefixEnvVar("MAX_CONTENT_LENGTH"))
-	if rawLength == "" {
-		return defaultMessageContentLength
-	}
-
-	length, err := strconv.ParseUint(rawLength, 10, 32)
-	if err != nil {
-		logging.Warnf("Error parsing MAX_CONTENT_LENGTH, using default: %s", err)
-	}
-
-	if length > maxMessageContentLength {
-		logging.Warnf("MAX_CONTENT_LENGTH set too large, using maximum value of %d", maxMessageContentLength)
-		length = maxMessageContentLength
-	}
-
-	return uint(length)
-}
-
 func truncateMessage(message string) string {
-	return util.TruncateStringWholeWords(message, messageContentLength)
+	return util.TruncateStringWholeWords(message, conf.MessageContentLength)
 }
