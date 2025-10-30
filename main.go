@@ -16,6 +16,7 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
@@ -24,8 +25,9 @@ import (
 const minimumUpdateInterval = 30 * time.Second
 const enableOtherEntries = true
 const enableSubmissions = true
+const enableUserFilters = true
 
-var submissionUsernameFilter = make([]string, 0)
+var entryUserFilters = make(map[entries.EntryType][]string)
 
 func main() {
 	appContext, _ := setup()
@@ -50,16 +52,18 @@ func setup() (context.Context, context.CancelFunc) {
 	logging.Info("---- BOT STARTING ----")
 	logging.Info("Welcome to FurAffinity Notifier!")
 
-	rawSubmissionsUserFilter := os.Getenv(util.PrefixEnvVar("SUBMISSIONS_USER_FILTER"))
-	for _, userRaw := range strings.Split(rawSubmissionsUserFilter, ",") {
-		user := strings.TrimSpace(userRaw)
-		if user != "" {
-			submissionUsernameFilter = append(submissionUsernameFilter, user)
+	if enableUserFilters {
+		for _, entryType := range entries.EntryTypes() {
+			filter := userFiltersForEntryType(entryType)
+			if filter != nil {
+				entryUserFilters[entryType] = filter
+				logging.Infof(
+					"User filter for type '%s' enabled. Configured usernames: [%s]",
+					entryType.Name(),
+					strings.Join(filter, ", "),
+				)
+			}
 		}
-	}
-
-	if len(submissionUsernameFilter) > 0 {
-		logging.Infof("Submissions user filter enabled. Configured usernames: %v", submissionUsernameFilter)
 	}
 
 	db.CreateDatabase()
@@ -137,11 +141,48 @@ func UpdateJob() {
 	wg.Wait()
 }
 
-func submissionsChannel(collector *fa.FurAffinityCollector) <-chan *fa.SubmissionEntry {
-	if len(submissionUsernameFilter) > 0 {
-		return collector.GetNewSubmissionEntriesFromUsers(slices.Clone(submissionUsernameFilter)...)
+func userFiltersForEntryType(entryType entries.EntryType) []string {
+	envVar := ""
+	switch entryType {
+	case entries.EntryTypeSubmission:
+		envVar = "SUBMISSIONS_USER_FILTER"
+	case entries.EntryTypeJournal:
+		envVar = "JOURNALS_USER_FILTER"
+	case entries.EntryTypeNote:
+		envVar = "NOTES_USER_FILTER"
+	case entries.EntryTypeJournalComment:
+		fallthrough
+	case entries.EntryTypeSubmissionComment:
+		envVar = "COMMENTS_USER_FILTER"
+	case entries.EntryTypeInvalid:
+	default:
+		panic("unreachable")
 	}
-	return collector.GetNewSubmissionEntries()
+
+	if envVar == "" {
+		return nil
+	}
+
+	filterRaw := os.Getenv(util.PrefixEnvVar(envVar))
+	users := make([]string, 0)
+	for _, userRaw := range strings.Split(filterRaw, ",") {
+		user := tools.NormalizeUsername(userRaw)
+		if user != "" {
+			users = append(users, user)
+		}
+	}
+	if len(users) == 0 {
+		return nil
+	}
+	return users
+}
+
+func applyUserFilters(c *fa.FurAffinityCollector) {
+	for entryType, users := range entryUserFilters {
+		if users != nil && len(users) > 0 {
+			c.SetUserFilter(entryType, users)
+		}
+	}
 }
 
 func updateForUser(user *db.User, doneCallback func()) {
@@ -150,6 +191,11 @@ func updateForUser(user *db.User, doneCallback func()) {
 	c := fa.NewCollector(user.ID)
 	c.LimitConcurrency = 4
 	c.OnlyUnreadNotes = user.UnreadNotesOnly
+
+	// set filters
+	if enableUserFilters {
+		applyUserFilters(c)
+	}
 
 	entryTypes := user.EnabledEntryTypes()
 
@@ -160,7 +206,7 @@ func updateForUser(user *db.User, doneCallback func()) {
 	}
 
 	if enableSubmissions && slices.Contains(entryTypes, entries.EntryTypeSubmission) {
-		for submission := range submissionsChannel(c) {
+		for submission := range c.GetNewSubmissionEntries() {
 			telegram.HandleNewSubmission(submission, user)
 		}
 	}

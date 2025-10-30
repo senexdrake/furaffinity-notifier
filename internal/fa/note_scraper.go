@@ -109,6 +109,9 @@ func (fc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteEntry {
 			if fc.OnlySinceRegistration && parsed.Date().Before(userRegistrationDate) {
 				return
 			}
+			if !fc.IsWhitelisted(entries.EntryTypeNote, parsed.From().UserName) {
+				return
+			}
 
 			noteChannel <- parsed
 		})

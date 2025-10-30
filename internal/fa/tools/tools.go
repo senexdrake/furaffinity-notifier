@@ -1,9 +1,11 @@
 package tools
 
 import (
+	"errors"
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 )
@@ -16,6 +18,10 @@ const ThumbnailSizeLarge = 600
 const ThumbnailSizeSmall = 300
 
 var thumbnailUrlSizeRegex = regexp.MustCompile("(.*@)(\\d*)(-.*)")
+
+// profileUrlUsernameRegex matches the username portion of a profile URL.
+// FA allows letters, numbers, dashes, dots, and tildes in usernames.
+var profileUrlUsernameRegex = regexp.MustCompile(".*/user/([\\w-.~]*)/*")
 
 func NewThumbnailUrl(url *url.URL) *ThumbnailUrl {
 	if url == nil {
@@ -47,4 +53,23 @@ func (tu *ThumbnailUrl) WithSizeLarge() *ThumbnailUrl {
 
 func (tu *ThumbnailUrl) WithSizeSmall() *ThumbnailUrl {
 	return tu.WithSize(ThumbnailSizeSmall)
+}
+
+func NormalizeUsername(user string) string {
+	return strings.ToLower(strings.TrimSpace(user))
+}
+
+func UsernameFromProfileLink(link *url.URL) (string, error) {
+	if link == nil {
+		return "", errors.New("profile link is nil")
+	}
+	matches := profileUrlUsernameRegex.FindStringSubmatch(link.Path)
+	if len(matches) > 1 {
+		username := matches[1]
+		if len(username) == 0 {
+			return "", errors.New("empty username")
+		}
+		return username, nil
+	}
+	return "", errors.New("no username found in profile link")
 }

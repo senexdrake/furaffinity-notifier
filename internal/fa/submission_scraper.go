@@ -174,7 +174,6 @@ func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 		rawSubmissionData := siteElement.DOM.Find("#js-submissionData").First().Text()
 		submissionData := parseSubmissionData(rawSubmissionData)
 
-		println(submissionData)
 		siteElement.ForEach("#messagecenter-submissions .notifications-by-date", func(i int, e *colly.HTMLElement) {
 			date, err := submissionSectionDate(e)
 			if err != nil {
@@ -228,6 +227,11 @@ func (fc *FurAffinityCollector) submissionHandlerWrapper(
 			logging.Warnf("Error parsing submission: %s", err)
 			return
 		}
+
+		if !fc.IsWhitelisted(entries.EntryTypeSubmission, entry.From().UserName) {
+			return
+		}
+
 		data, found := submissionData[entry.ID()]
 		if found {
 			entry.submissionData = data
@@ -253,27 +257,6 @@ func (fc *FurAffinityCollector) GetNewSubmissionEntries() <-chan *SubmissionEntr
 	}()
 
 	return filtered
-}
-
-func (fc *FurAffinityCollector) GetNewSubmissionEntriesFromUsers(usernames ...string) <-chan *SubmissionEntry {
-	filtered := make(chan *SubmissionEntry)
-	newSubmissions := fc.GetNewSubmissionEntries()
-	normalizedNames := make(util.Set[string], len(usernames))
-	normalizedNames.AddAll(util.Map(usernames, strings.ToLower))
-
-	go func() {
-		for submission := range newSubmissions {
-			if normalizedNames.Contains(strings.ToLower(submission.From().UserName)) {
-				filtered <- submission
-			}
-		}
-		close(filtered)
-	}()
-
-	return filtered
-}
-func (fc *FurAffinityCollector) GetNewSubmissionEntriesFromUser(username string) <-chan *SubmissionEntry {
-	return fc.GetNewSubmissionEntriesFromUsers(username)
 }
 
 func (fc *FurAffinityCollector) isSubmissionNew(id uint) bool {

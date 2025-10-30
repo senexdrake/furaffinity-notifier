@@ -11,6 +11,20 @@ const (
 	EntryTypeJournalComment
 )
 
+func ValidEntryTypes() []EntryType {
+	return []EntryType{
+		EntryTypeNote,
+		EntryTypeSubmission,
+		EntryTypeSubmissionComment,
+		EntryTypeJournal,
+		EntryTypeJournalComment,
+	}
+}
+
+func EntryTypes() []EntryType {
+	return append(ValidEntryTypes(), EntryTypeInvalid)
+}
+
 func (e EntryType) Name() string {
 	switch e {
 	case EntryTypeInvalid:

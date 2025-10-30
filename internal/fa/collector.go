@@ -11,6 +11,7 @@ import (
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -43,6 +44,7 @@ type (
 		OnlyUnreadNotes       bool
 		OnlySinceRegistration bool
 		UserID                uint
+		userFilters           map[entries.EntryType]util.Set[string]
 	}
 	FurAffinityUser struct {
 		DisplayName string
@@ -128,12 +130,35 @@ func (fc *FurAffinityCollector) isEntryNew(entryType entries.EntryType, entryId 
 	return len(foundRows) == 0
 }
 
+// IsWhitelisted returns true if the user is whitelisted for the given entry type or if there is no filter specified
+// for that entry type.
+func (fc *FurAffinityCollector) IsWhitelisted(entryType entries.EntryType, user string) bool {
+	filter, found := fc.userFilters[entryType]
+	// SetUserFilter does not allow empty filters to be set, so we don't need to check for them.
+	if !found {
+		return true
+	}
+	return filter.Contains(tools.NormalizeUsername(user))
+}
+
+func (fc *FurAffinityCollector) SetUserFilter(entryType entries.EntryType, users []string) {
+	// If the filter is empty, remove it. Nil slice has a length of 0 too.
+	if len(users) == 0 {
+		delete(fc.userFilters, entryType)
+		return
+	}
+	set := make(util.Set[string], len(users))
+	set.AddAll(util.Map(users, tools.NormalizeUsername))
+	fc.userFilters[entryType] = set
+}
+
 func NewCollector(userId uint) *FurAffinityCollector {
 	return &FurAffinityCollector{
 		LimitConcurrency:      4,
 		UserID:                userId,
 		OnlyUnreadNotes:       true,
 		OnlySinceRegistration: true,
+		userFilters:           make(map[entries.EntryType]util.Set[string]),
 	}
 }
 

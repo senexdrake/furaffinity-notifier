@@ -12,6 +12,8 @@ import (
 
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -129,7 +131,7 @@ func (fc *FurAffinityCollector) entryHandlerWrapper(
 	wg.Wait()
 }
 
-func (fc *FurAffinityCollector) GetOtherEntries(entryTypes ...entries.EntryType) <-chan Entry {
+func (fc *FurAffinityCollector) getOtherEntriesUnfiltered(entryTypes ...entries.EntryType) <-chan Entry {
 	c := fc.otherCollector()
 
 	channel := make(chan Entry)
@@ -202,6 +204,20 @@ func (fc *FurAffinityCollector) GetOtherEntries(entryTypes ...entries.EntryType)
 	}()
 
 	return channel
+}
+
+func (fc *FurAffinityCollector) GetOtherEntries(entryTypes ...entries.EntryType) <-chan Entry {
+	allEntries := fc.getOtherEntriesUnfiltered(entryTypes...)
+	filteredEntries := make(chan Entry)
+	go func() {
+		for entry := range allEntries {
+			if fc.IsWhitelisted(entry.EntryType(), entry.From().UserName) {
+				filteredEntries <- entry
+			}
+		}
+		close(filteredEntries)
+	}()
+	return filteredEntries
 }
 
 func (fc *FurAffinityCollector) GetNewOtherEntries(entryTypes ...entries.EntryType) <-chan Entry {
@@ -424,8 +440,17 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 				parseError = true
 				return true
 			}
+
+			username, err := tools.UsernameFromProfileLink(link)
+			if err != nil {
+				logging.Errorf("error parsing username from profile link: %s", err)
+				parseError = true
+				return true
+			}
+
 			msg.from = FurAffinityUser{
 				ProfileUrl:  link,
+				UserName:    tools.NormalizeUsername(username),
 				DisplayName: trimHtmlText(e.Text),
 			}
 		} else if i == indexTitle {
