@@ -137,9 +137,9 @@ func EpochStringToTime(s string) (time.Time, error) {
 	return time.Unix(timeAttr, 0), nil
 }
 
-func TruncateStringWholeWords(s string, maxLength int) string {
+func TruncateStringWholeWords(s string, maxLength uint) string {
 	lastSpaceIx := -1
-	length := 0
+	length := uint(0)
 	for i, r := range s {
 		if unicode.IsSpace(r) {
 			lastSpaceIx = i
