@@ -28,8 +28,14 @@ type (
 		date           time.Time
 		thumbnail      *tools.ThumbnailUrl
 		submissionData *SubmissionData
+		content        *SubmissionContent
 	}
 	SubmissionContent struct {
+		id              uint
+		descriptionText string
+		descriptionHtml string
+		full            *url.URL
+		thumbnail       *tools.ThumbnailUrl
 	}
 
 	SubmissionData struct {
@@ -130,32 +136,39 @@ func (se *SubmissionEntry) Title() string {
 }
 
 func (se *SubmissionEntry) Description() string {
-	data := se.SubmissionData()
-	if data == nil {
-		return ""
+	content := se.Content()
+	if content != nil {
+		return content.descriptionText
 	}
-	return data.Description
+	data := se.SubmissionData()
+	if data != nil {
+		return data.Description
+	}
+	return ""
 }
 
 func (se *SubmissionEntry) Thumbnail() *tools.ThumbnailUrl {
 	return se.thumbnail
+}
+func (se *SubmissionEntry) FullView() *url.URL {
+	content := se.Content()
+	if content == nil {
+		return nil
+	}
+	return content.full
 }
 
 func (se *SubmissionEntry) SubmissionData() *SubmissionData {
 	return se.submissionData
 }
 
-func (se *SubmissionEntry) Content() EntryContent {
-	// TODO
-	return nil
-}
-func (se *SubmissionEntry) SetContent(EntryContent) {
-	// TODO
-	return
-}
+func (se *SubmissionEntry) Content() *SubmissionContent { return se.content }
 func (se *SubmissionEntry) HasContent() bool {
 	// TODO
-	return false
+	return se.content != nil
+}
+func (se *SubmissionEntry) SetContent(content *SubmissionContent) {
+	se.content = content
 }
 
 func (fc *FurAffinityCollector) submissionCollector() *colly.Collector {
@@ -257,6 +270,78 @@ func (fc *FurAffinityCollector) GetNewSubmissionEntries() <-chan *SubmissionEntr
 	}()
 
 	return filtered
+}
+
+func (fc *FurAffinityCollector) GetNewSubmissionEntriesWithContent() <-chan *SubmissionEntry {
+	return fc.submissionsWithContent(fc.GetNewSubmissionEntries())
+}
+
+func (fc *FurAffinityCollector) GetSubmissionEntriesWithContent() <-chan *SubmissionEntry {
+	return fc.submissionsWithContent(fc.GetSubmissionEntries())
+}
+
+func (fc *FurAffinityCollector) submissionsWithContent(entryChannel <-chan *SubmissionEntry) <-chan *SubmissionEntry {
+	channel := make(chan *SubmissionEntry)
+	go func() {
+		defer close(channel)
+		concurrencyLimit := fc.LimitConcurrency
+		if concurrencyLimit <= 0 {
+			concurrencyLimit = 1
+		}
+
+		guardChannel := make(chan struct{}, concurrencyLimit)
+
+		wg := sync.WaitGroup{}
+		for entry := range entryChannel {
+			guardChannel <- struct{}{}
+			wg.Add(1)
+			go func() {
+				defer func() {
+					<-guardChannel
+					wg.Done()
+				}()
+
+				// Fetch note content without marking it as read, because we will do a batch operation alter
+				entry.SetContent(fc.GetSubmissionContent(entry))
+				channel <- entry
+			}()
+		}
+
+		wg.Wait()
+	}()
+
+	return channel
+}
+
+func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *SubmissionContent {
+	if entry.Type() != SubmissionTypeImage {
+		return nil
+	}
+	c := fc.otherCollector()
+
+	content := SubmissionContent{id: entry.ID(), thumbnail: entry.Thumbnail()}
+
+	valid := false
+
+	c.OnHTML(".submission-content", func(e *colly.HTMLElement) {
+		content.full = submissionFullView(entry.Type(), e)
+
+		descriptionElement := e.DOM.Find(".submission-description").First()
+		content.descriptionText = trimHtmlText(descriptionElement.Text())
+		html, _ := descriptionElement.Html()
+		content.descriptionHtml = html
+
+		valid = content.full != nil && content.descriptionText != ""
+	})
+
+	c.Visit(entry.Link().String())
+	c.Wait()
+
+	if !valid {
+		return nil
+	}
+
+	return &content
 }
 
 func (fc *FurAffinityCollector) isSubmissionNew(id uint) bool {
@@ -361,6 +446,28 @@ func submissionThumbnail(el *colly.HTMLElement) *tools.ThumbnailUrl {
 		return tools.NewThumbnailUrl(parsed)
 	}
 	return nil
+}
+
+func submissionFullView(submissionType SubmissionType, el *colly.HTMLElement) *url.URL {
+	if submissionType != SubmissionTypeImage {
+		// Only images are supported for now
+		return nil
+	}
+	imgElement := el.DOM.Find(".submission-image img").First()
+	fullViewSrc, found := imgElement.Attr("data-fullview-src")
+	if !found || fullViewSrc == "" {
+		return nil
+	}
+
+	parsed, err := url.Parse(fullViewSrc)
+	if err != nil {
+		logging.Warnf("Failed parsing full view URL for submission: %s", err)
+		return nil
+	}
+	if parsed.Scheme == "" {
+		parsed.Scheme = "https"
+	}
+	return parsed
 }
 
 func parseSubmissionData(jsonData string) SubmissionDataMap {

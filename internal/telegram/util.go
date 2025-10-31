@@ -74,3 +74,24 @@ func (lpoh *linkPreviewOptionsHelper) Get() *models.LinkPreviewOptions {
 func truncateMessage(message string) string {
 	return util.TruncateStringWholeWords(message, conf.MessageContentLength)
 }
+
+func linkPreviewWithThumbnailOrFullView(fullView *url.URL, thumbnail *tools.ThumbnailUrl) *linkPreviewOptionsHelper {
+	previewOptions := defaultLinkPreviewOptionsHelper()
+
+	enablePreview := func(url *url.URL) *linkPreviewOptionsHelper {
+		previewOptions.SetDisabled(false)
+		previewOptions.SetShowAboveText(false)
+		previewOptions.SetUrl(url)
+		return previewOptions
+	}
+
+	if fullView != nil {
+		return enablePreview(fullView)
+	}
+
+	if thumbnail != nil {
+		return enablePreview(thumbnail.ToUrl())
+	}
+
+	return previewOptions
+}

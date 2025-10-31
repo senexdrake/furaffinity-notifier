@@ -162,6 +162,12 @@ func NewCollector(userId uint) *FurAffinityCollector {
 	}
 }
 
+func NewCollectorForUser(user *db.User) *FurAffinityCollector {
+	fc := NewCollector(user.ID)
+	fc.OnlyUnreadNotes = user.UnreadNotesOnly
+	return fc
+}
+
 func (fu FurAffinityUser) Name() string {
 	name := fu.DisplayName
 	if len(name) == 0 {

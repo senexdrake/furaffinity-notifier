@@ -4,6 +4,8 @@
 <b>{{.Title}}</b>
 {{if .Description}}<blockquote expandable>{{formatContent .Description}}</blockquote>{{end}}
 ---------------------------------
-<a href="{{.Link}}">Open</a>
+<a href="{{.Link}}">View on FA</a>
+{{if .ThumbnailUrl}}<a href="{{.ThumbnailUrl}}">Open preview</a>{{end}}
+{{if .FullViewUrl}}<a href="{{.FullViewUrl}}">Open directly</a>{{end}}
 (Submission ID: <code>{{.ID}}</code>)
 {{end}}

@@ -25,6 +25,7 @@ const minimumUpdateInterval = 30 * time.Second
 const enableOtherEntries = true
 const enableSubmissions = true
 const enableUserFilters = true
+const enableSubmissionsContent = true
 
 var entryUserFilters = make(map[entries.EntryType][]string)
 
@@ -167,9 +168,8 @@ func applyUserFilters(c *fa.FurAffinityCollector) {
 func updateForUser(user *db.User, doneCallback func()) {
 	defer doneCallback()
 	logging.Debugf("Running update for user %d", user.ID)
-	c := fa.NewCollector(user.ID)
+	c := fa.NewCollectorForUser(user)
 	c.LimitConcurrency = 4
-	c.OnlyUnreadNotes = user.UnreadNotesOnly
 
 	// set filters
 	if enableUserFilters {
@@ -185,7 +185,7 @@ func updateForUser(user *db.User, doneCallback func()) {
 	}
 
 	if enableSubmissions && slices.Contains(entryTypes, entries.EntryTypeSubmission) {
-		for submission := range c.GetNewSubmissionEntries() {
+		for submission := range submissionsChannel(c) {
 			telegram.HandleNewSubmission(submission, user)
 		}
 	}
@@ -196,4 +196,11 @@ func updateForUser(user *db.User, doneCallback func()) {
 			telegram.HandleNewEntry(entry, user)
 		}
 	}
+}
+
+func submissionsChannel(c *fa.FurAffinityCollector) <-chan *fa.SubmissionEntry {
+	if enableSubmissionsContent {
+		return c.GetNewSubmissionEntriesWithContent()
+	}
+	return c.GetNewSubmissionEntries()
 }

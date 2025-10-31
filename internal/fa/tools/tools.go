@@ -55,6 +55,11 @@ func (tu *ThumbnailUrl) WithSizeSmall() *ThumbnailUrl {
 	return tu.WithSize(ThumbnailSizeSmall)
 }
 
+func (tu *ThumbnailUrl) ToUrl() *url.URL {
+	tmpUrl := tu.URL
+	return &tmpUrl
+}
+
 func NormalizeUsername(user string) string {
 	return strings.ToLower(strings.TrimSpace(user))
 }

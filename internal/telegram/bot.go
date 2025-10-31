@@ -218,16 +218,30 @@ func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 }
 
 func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
+	fullViewUrl := submission.FullView()
+	fullViewUrlString := ""
+	if fullViewUrl != nil {
+		fullViewUrlString = fullViewUrl.String()
+	}
+
+	thumbnailUrl := submission.Thumbnail().WithSizeLarge()
+	thumbnailUrlString := ""
+	if thumbnailUrl != nil {
+		thumbnailUrlString = thumbnailUrl.String()
+	}
+
 	buf := new(bytes.Buffer)
 	err := newSubmissionMessageTemplate.Execute(buf, &tmpl.NewSubmissionsContent{
-		ID:          submission.ID(),
-		Title:       submission.Title(),
-		Description: submission.Description(),
-		UserLink:    submission.From().ProfileUrl.String(),
-		Link:        submission.Link().String(),
-		UserName:    submission.From().UserName,
-		Rating:      submission.Rating(),
-		Type:        submission.Type(),
+		ID:           submission.ID(),
+		Title:        submission.Title(),
+		Description:  submission.Description(),
+		UserLink:     submission.From().ProfileUrl.String(),
+		Link:         submission.Link().String(),
+		UserName:     submission.From().UserName,
+		Rating:       submission.Rating(),
+		Type:         submission.Type(),
+		ThumbnailUrl: thumbnailUrlString,
+		FullViewUrl:  fullViewUrlString,
 	})
 
 	if err != nil {
@@ -235,13 +249,7 @@ func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 		return
 	}
 
-	previewOptions := defaultLinkPreviewOptionsHelper()
-
-	if submission.Thumbnail() != nil {
-		previewOptions.SetDisabled(false)
-		previewOptions.SetShowAboveText(false)
-		previewOptions.SetThumbnailUrl(submission.Thumbnail().WithSizeLarge())
-	}
+	previewOptions := linkPreviewWithThumbnailOrFullView(fullViewUrl, thumbnailUrl)
 
 	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
 		ChatID:             user.TelegramChatId,
