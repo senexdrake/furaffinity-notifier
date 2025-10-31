@@ -109,7 +109,7 @@ func StartBackgroundUpdates(ctx context.Context, interval time.Duration) {
 
 func UpdateJob() {
 	users := make([]db.User, 0)
-	db.Db().Find(&users)
+	db.Db().Preload("EntryTypes").Find(&users)
 
 	wg := sync.WaitGroup{}
 	// Do checks synchronously for now to prevent any massive rate limiting
@@ -168,7 +168,7 @@ func applyUserFilters(c *fa.FurAffinityCollector) {
 func updateForUser(user *db.User, doneCallback func()) {
 	defer doneCallback()
 	logging.Debugf("Running update for user %d", user.ID)
-	c := fa.NewCollectorForUser(user)
+	c := fa.NewCollector(user)
 	c.LimitConcurrency = 4
 
 	// set filters

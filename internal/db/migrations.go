@@ -3,6 +3,7 @@ package db
 import (
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/gorm"
 )
 
@@ -29,6 +30,7 @@ func migrate() {
 	migrateToV2(migrator, &schemaInfo)
 	migrateToV3(migrator, &schemaInfo)
 	migrateToV4(migrator, &schemaInfo)
+	migrateToV5(migrator, &schemaInfo)
 }
 
 func migrateToV2(migrator gorm.Migrator, info *SchemaInfo) {
@@ -103,6 +105,83 @@ func migrateToV4(migrator gorm.Migrator, info *SchemaInfo) {
 	}
 
 	info.Version = 4
+	err = updateSchemaVersion(info.Version)
+	if err != nil {
+		panic(err)
+	}
+	logging.Info("Done")
+}
+
+func migrateToV5(migrator gorm.Migrator, info *SchemaInfo) {
+	if info.Version >= 5 {
+		return
+	}
+
+	logging.Info("Migrating database to version 5")
+
+	type OldUserSettings struct {
+		ID                        uint
+		NotesEnabled              bool
+		SubmissionsEnabled        bool
+		SubmissionCommentsEnabled bool
+		JournalCommentsEnabled    bool
+		JournalsEnabled           bool
+	}
+
+	enabledTypes := func(settings OldUserSettings) []entries.EntryType {
+		types := make([]entries.EntryType, 0)
+		if settings.NotesEnabled {
+			types = append(types, entries.EntryTypeNote)
+		}
+		if settings.SubmissionsEnabled {
+			types = append(types, entries.EntryTypeSubmission)
+		}
+		if settings.SubmissionCommentsEnabled {
+			types = append(types, entries.EntryTypeSubmissionComment)
+		}
+		if settings.JournalsEnabled {
+			types = append(types, entries.EntryTypeJournal)
+		}
+		if settings.JournalCommentsEnabled {
+			types = append(types, entries.EntryTypeJournalComment)
+		}
+		return types
+	}
+
+	oldUserSettings := make([]OldUserSettings, 0)
+
+	db.Table("users").
+		Find(&oldUserSettings)
+
+	err := migrator.CreateTable(UserEntryType{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, settings := range oldUserSettings {
+		enabledEntryTypes := enabledTypes(settings)
+		userEntryTypes := util.Map(enabledEntryTypes, func(e entries.EntryType) *UserEntryType {
+			return NewUserEntryType(settings.ID, e)
+		})
+		db.Save(&userEntryTypes)
+	}
+
+	columnsToDrop := []string{
+		"notes_enabled",
+		"journals_enabled",
+		"journal_comments_enabled",
+		"submissions_enabled",
+		"submission_comments_enabled",
+	}
+
+	for _, col := range columnsToDrop {
+		err = migrator.DropColumn(&User{}, col)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	info.Version = 5
 	err = updateSchemaVersion(info.Version)
 	if err != nil {
 		panic(err)

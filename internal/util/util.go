@@ -25,6 +25,12 @@ const (
 
 var truthyValues = []string{"1", "true", "yes", "on", "enable"}
 
+func NewSet[T comparable](elements []T) Set[T] {
+	set := make(Set[T])
+	set.AddAll(elements)
+	return set
+}
+
 func (s Set[T]) Add(t T) {
 	s[t] = struct{}{}
 }

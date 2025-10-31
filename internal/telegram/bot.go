@@ -357,7 +357,7 @@ func userFromChatId(chatId int64, tx *gorm.DB) (*db.User, bool) {
 		tx = db.Db()
 	}
 	user := &db.User{}
-	tx.Limit(1).Find(user, "telegram_chat_id = ?", chatId)
+	tx.Preload("EntryTypes").Limit(1).Find(user, "telegram_chat_id = ?", chatId)
 	return user, user.ID > 0
 }
 

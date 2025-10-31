@@ -41,9 +41,8 @@ type (
 
 	FurAffinityCollector struct {
 		LimitConcurrency      int
-		OnlyUnreadNotes       bool
 		OnlySinceRegistration bool
-		UserID                uint
+		User                  *db.User
 		userFilters           map[entries.EntryType]util.Set[string]
 	}
 	FurAffinityUser struct {
@@ -93,7 +92,7 @@ func (fc *FurAffinityCollector) configuredCollector(withCookies bool) *colly.Col
 
 func (fc *FurAffinityCollector) cookieMap() map[string]*http.Cookie {
 	cookies := make([]db.UserCookie, 0)
-	db.Db().Where(&db.UserCookie{UserID: fc.UserID}).Find(&cookies)
+	db.Db().Where(&db.UserCookie{UserID: fc.UserID()}).Find(&cookies)
 
 	cookieMap := make(map[string]*http.Cookie)
 	for _, cookie := range cookies {
@@ -106,28 +105,21 @@ func (fc *FurAffinityCollector) cookies() []*http.Cookie {
 	return util.Values(fc.cookieMap())
 }
 
-func (fc *FurAffinityCollector) user() *db.User {
-	user := &db.User{}
-	user.ID = fc.UserID
-	db.Db().Limit(1).Find(user)
-	return user
-}
-
 func (fc *FurAffinityCollector) registrationDate() time.Time {
-	return fc.user().CreatedAt
+	return fc.User.CreatedAt
 }
 
 func (fc *FurAffinityCollector) isEntryNew(entryType entries.EntryType, entryId uint) bool {
 	searchEntry := db.KnownEntry{
 		EntryType: entryType,
 		ID:        entryId,
-		UserID:    fc.UserID,
+		UserID:    fc.UserID(),
 	}
-	foundRows := make([]db.KnownEntry, 0)
+	rowCount := int64(0)
 
-	db.Db().Where(&searchEntry).Find(&foundRows)
+	db.Db().Model(&searchEntry).Where(&searchEntry).Count(&rowCount)
 
-	return len(foundRows) == 0
+	return rowCount == 0
 }
 
 // IsWhitelisted returns true if the user is whitelisted for the given entry type or if there is no filter specified
@@ -152,20 +144,21 @@ func (fc *FurAffinityCollector) SetUserFilter(entryType entries.EntryType, users
 	fc.userFilters[entryType] = set
 }
 
-func NewCollector(userId uint) *FurAffinityCollector {
+func (fc *FurAffinityCollector) UserID() uint {
+	return fc.User.ID
+}
+
+func (fc *FurAffinityCollector) OnlyUnreadNotes() bool {
+	return fc.User.UnreadNotesOnly
+}
+
+func NewCollector(user *db.User) *FurAffinityCollector {
 	return &FurAffinityCollector{
 		LimitConcurrency:      4,
-		UserID:                userId,
-		OnlyUnreadNotes:       true,
+		User:                  user,
 		OnlySinceRegistration: true,
 		userFilters:           make(map[entries.EntryType]util.Set[string]),
 	}
-}
-
-func NewCollectorForUser(user *db.User) *FurAffinityCollector {
-	fc := NewCollector(user.ID)
-	fc.OnlyUnreadNotes = user.UnreadNotesOnly
-	return fc
 }
 
 func (fu FurAffinityUser) Name() string {

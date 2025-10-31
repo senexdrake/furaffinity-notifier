@@ -66,7 +66,7 @@ func (fc *FurAffinityCollector) notesCookies() []*http.Cookie {
 		Name:  "folder",
 	}
 
-	if fc.OnlyUnreadNotes {
+	if fc.OnlyUnreadNotes() {
 		folderCookie.Value = "unread"
 	}
 

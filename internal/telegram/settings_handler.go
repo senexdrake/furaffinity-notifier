@@ -3,14 +3,15 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 const buttonDataPrefix = "settings-"
@@ -129,7 +130,9 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 
 	message := update.CallbackQuery.Message.Message
 
-	user, _ := userFromChatId(chatId, nil)
+	tx := db.Db().Begin()
+
+	user, _ := userFromChatId(chatId, tx)
 
 	queryData := update.CallbackQuery.Data
 	if queryData == "cancel" {
@@ -138,28 +141,19 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 	}
 
 	entryType := dataToEntryType(queryData)
-	typeEnabled := false
-	switch entryType {
-	case entries.EntryTypeNote:
-		user.NotesEnabled = !user.NotesEnabled
-		typeEnabled = user.NotesEnabled
-	case entries.EntryTypeSubmission:
-		user.SubmissionsEnabled = !user.SubmissionsEnabled
-		typeEnabled = user.SubmissionsEnabled
-	case entries.EntryTypeSubmissionComment:
-		user.SubmissionCommentsEnabled = !user.SubmissionCommentsEnabled
-		typeEnabled = user.SubmissionCommentsEnabled
-	case entries.EntryTypeJournal:
-		user.JournalsEnabled = !user.JournalsEnabled
-		typeEnabled = user.JournalsEnabled
-	case entries.EntryTypeJournalComment:
-		user.JournalCommentsEnabled = !user.JournalCommentsEnabled
-		typeEnabled = user.JournalCommentsEnabled
-	default:
-		return
-	}
 
-	db.Db().Save(user)
+	enabledEntryTypes := make(util.Set[entries.EntryType])
+	enabledEntryTypes.AddAll(user.EnabledEntryTypes())
+
+	typeEnabled := enabledEntryTypes.Contains(entryType)
+	// Toggle status
+	typeEnabled = !typeEnabled
+
+	user.EnableEntryType(entryType, typeEnabled, tx)
+	tx.Commit()
+
+	// Refresh user
+	user, _ = userFromChatId(chatId, nil)
 
 	b.AnswerCallbackQuery(ctx, &bot.AnswerCallbackQueryParams{
 		CallbackQueryID: update.CallbackQuery.ID,
@@ -173,13 +167,14 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 		Text:        entryTypeStatusList(user),
 		ReplyMarkup: settingsKeyboard(),
 	})
+
 }
 
 func entryTypeStatusList(user *db.User) string {
 	statusMap := user.EntryTypeStatus()
 	statusFunc := func(entryType entries.EntryType) string {
-		status := statusMap[entryType]
-		if status {
+		_, found := statusMap[entryType]
+		if found {
 			return util.EmojiGreenCheck
 		}
 		return util.EmojiCross
