@@ -138,12 +138,12 @@ func (fc *FurAffinityCollector) GetNewNotes() <-chan *NoteEntry {
 	allNotes := fc.GetNotes(1)
 
 	go func() {
+		defer close(newNotes)
 		for note := range allNotes {
 			if fc.isNoteNew(note.ID()) {
 				newNotes <- note
 			}
 		}
-		close(newNotes)
 	}()
 
 	return newNotes
@@ -152,6 +152,7 @@ func (fc *FurAffinityCollector) GetNewNotes() <-chan *NoteEntry {
 func (fc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteEntry {
 	channel := make(chan *NoteEntry)
 	go func() {
+		defer close(channel)
 		concurrencyLimit := fc.LimitConcurrency
 		if concurrencyLimit <= 0 {
 			concurrencyLimit = 1
@@ -184,7 +185,6 @@ func (fc *FurAffinityCollector) GetNewNotesWithContent() <-chan *NoteEntry {
 		if err != nil {
 			logging.Errorf("Error while marking notes as unreads: %v", err)
 		}
-		close(channel)
 	}()
 
 	return channel

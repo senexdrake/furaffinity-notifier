@@ -208,12 +208,12 @@ func (fc *FurAffinityCollector) GetOtherEntries(entryTypes ...entries.EntryType)
 	allEntries := fc.getOtherEntriesUnfiltered(entryTypes...)
 	filteredEntries := make(chan Entry)
 	go func() {
+		defer close(filteredEntries)
 		for entry := range allEntries {
 			if fc.IsWhitelisted(entry.EntryType(), entry.From().UserName) {
 				filteredEntries <- entry
 			}
 		}
-		close(filteredEntries)
 	}()
 	return filteredEntries
 }
@@ -224,12 +224,12 @@ func (fc *FurAffinityCollector) GetNewOtherEntries(entryTypes ...entries.EntryTy
 	allEntries := fc.GetOtherEntries(entryTypes...)
 
 	go func() {
+		defer close(newEntries)
 		for entry := range allEntries {
 			if fc.isEntryNew(entry.EntryType(), entry.ID()) {
 				newEntries <- entry
 			}
 		}
-		close(newEntries)
 	}()
 
 	return newEntries

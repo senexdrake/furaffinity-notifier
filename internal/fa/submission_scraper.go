@@ -248,12 +248,12 @@ func (fc *FurAffinityCollector) GetNewSubmissionEntries() <-chan *SubmissionEntr
 	all := fc.GetSubmissionEntries()
 
 	go func() {
+		defer close(filtered)
 		for submission := range all {
 			if fc.isSubmissionNew(submission.ID()) {
 				filtered <- submission
 			}
 		}
-		close(filtered)
 	}()
 
 	return filtered
