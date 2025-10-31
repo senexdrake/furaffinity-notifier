@@ -40,7 +40,7 @@ func readMessageContentLength() uint {
 }
 
 func readTelegramCreatorId() int64 {
-	rawId := os.Getenv(util.PrefixEnvVar("MAX_CONTENT_LENGTH"))
+	rawId := os.Getenv(util.PrefixEnvVar("TELEGRAM_CREATOR_ID"))
 	id, err := strconv.ParseInt(rawId, 10, 64)
 	if err != nil {
 		logging.Panicf("Error parsing telegram creator id '%s': %v", rawId, err)
