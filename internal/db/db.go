@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -137,6 +138,15 @@ func Db() *gorm.DB {
 		if err != nil {
 			return nil
 		}
+
+		sqlDB, err := openedDb.DB()
+		if err != nil {
+			logging.Errorf("Error retrieving sql db interface: %s", err)
+		} else {
+			// Fix SQlite "database is locked"
+			sqlDB.SetMaxOpenConns(1)
+		}
+
 		db = openedDb
 	}
 
