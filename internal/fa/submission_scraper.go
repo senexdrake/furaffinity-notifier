@@ -179,7 +179,7 @@ func (fc *FurAffinityCollector) submissionCollector() *colly.Collector {
 func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 	c := fc.submissionCollector()
 
-	channel := make(chan *SubmissionEntry)
+	channel := make(chan *SubmissionEntry, fc.channelBufferSize())
 
 	c.OnHTML("#site-content", func(siteElement *colly.HTMLElement) {
 
@@ -214,6 +214,11 @@ func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 		c.Visit(link.String())
 		c.Wait()
 	}()
+
+	if fc.IterateSubmissionsBackwards {
+		// The expected submission count is 72, so we can preallocate that amount
+		return util.BackwardsChannelWithCapacity(channel, 72)
+	}
 
 	return channel
 }
@@ -254,7 +259,7 @@ func (fc *FurAffinityCollector) submissionHandlerWrapper(
 }
 
 func (fc *FurAffinityCollector) GetNewSubmissionEntries() <-chan *SubmissionEntry {
-	filtered := make(chan *SubmissionEntry)
+	filtered := make(chan *SubmissionEntry, fc.channelBufferSize())
 	all := fc.GetSubmissionEntries()
 
 	go func() {
@@ -278,7 +283,7 @@ func (fc *FurAffinityCollector) GetSubmissionEntriesWithContent() <-chan *Submis
 }
 
 func (fc *FurAffinityCollector) submissionsWithContent(entryChannel <-chan *SubmissionEntry) <-chan *SubmissionEntry {
-	channel := make(chan *SubmissionEntry)
+	channel := make(chan *SubmissionEntry, fc.channelBufferSize())
 	go func() {
 		defer close(channel)
 		concurrencyLimit := fc.LimitConcurrency

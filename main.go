@@ -28,6 +28,7 @@ const enableUserFilters = true
 const enableSubmissionsContent = true
 
 var entryUserFilters = make(map[entries.EntryType][]string)
+var iterateSubmissionsBackwards = true
 
 func init() {
 	dotenvErr := godotenv.Load()
@@ -54,6 +55,19 @@ func init() {
 				)
 			}
 		}
+	}
+
+	if enableSubmissions {
+		backwardsIterationRaw := os.Getenv(util.PrefixEnvVar("SUBMISSIONS_BACKWARDS"))
+		if backwardsIterationRaw != "" {
+			backwardsIteration, err := strconv.ParseBool(backwardsIterationRaw)
+			if err != nil {
+				logging.Errorf("Error parsing bool: %s", err)
+			} else {
+				iterateSubmissionsBackwards = backwardsIteration
+			}
+		}
+
 	}
 }
 
@@ -173,6 +187,7 @@ func updateForUser(user *db.User, doneCallback func()) {
 	logging.Debugf("Running update for user %d", user.ID)
 	c := fa.NewCollector(user)
 	c.LimitConcurrency = 4
+	c.IterateSubmissionsBackwards = iterateSubmissionsBackwards
 
 	// set filters
 	if enableUserFilters {

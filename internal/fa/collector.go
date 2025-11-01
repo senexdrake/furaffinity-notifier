@@ -40,11 +40,12 @@ type (
 	}
 
 	FurAffinityCollector struct {
-		LimitConcurrency      int
-		OnlySinceRegistration bool
-		OnlySinceTypeEnabled  bool
-		User                  *db.User
-		userFilters           map[entries.EntryType]util.Set[string]
+		LimitConcurrency            int
+		OnlySinceRegistration       bool
+		OnlySinceTypeEnabled        bool
+		IterateSubmissionsBackwards bool
+		User                        *db.User
+		userFilters                 map[entries.EntryType]util.Set[string]
 	}
 	FurAffinityUser struct {
 		DisplayName string
@@ -176,13 +177,18 @@ func (fc *FurAffinityCollector) DateIsValid(entryType entries.EntryType, date ti
 	return true
 }
 
+func (fc *FurAffinityCollector) channelBufferSize() int {
+	return fc.LimitConcurrency
+}
+
 func NewCollector(user *db.User) *FurAffinityCollector {
 	return &FurAffinityCollector{
-		LimitConcurrency:      4,
-		User:                  user,
-		OnlySinceRegistration: true,
-		OnlySinceTypeEnabled:  true,
-		userFilters:           make(map[entries.EntryType]util.Set[string]),
+		LimitConcurrency:            4,
+		User:                        user,
+		OnlySinceRegistration:       true,
+		OnlySinceTypeEnabled:        true,
+		IterateSubmissionsBackwards: false,
+		userFilters:                 make(map[entries.EntryType]util.Set[string]),
 	}
 }
 

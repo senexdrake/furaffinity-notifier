@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"html"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -160,4 +161,32 @@ func TruncateStringWholeWords(s string, maxLength uint) string {
 	}
 	// If here, s is shorter than maxLength
 	return s
+}
+
+// BackwardsChannel iterates over a channel, putting all elements into an internal buffer. It then produces a new channel,
+// filling it with values from the buffer in reversed order.
+func BackwardsChannel[T any](channel <-chan T) <-chan T {
+	return BackwardsChannelWithCapacity(channel, 10)
+}
+
+// BackwardsChannelWithCapacity iterates over a channel, putting all elements into an internal buffer. It then produces a new channel,
+// filling it with values from the buffer in reversed order.
+// The specified capacity will be used for the internal buffer.
+func BackwardsChannelWithCapacity[T any](channel <-chan T, cap uint) <-chan T {
+	// TODO Replace places where this is used with better alternatives that do not require reading everything into a buffer first
+	// Like starting iterating from the bottom of the HTML page maybe
+	buf := make([]T, 0, cap)
+	for t := range channel {
+		buf = append(buf, t)
+	}
+
+	reversedChannel := make(chan T, 10)
+	go func() {
+		defer close(reversedChannel)
+		for _, t := range slices.Backward(buf) {
+			reversedChannel <- t
+		}
+	}()
+
+	return reversedChannel
 }
