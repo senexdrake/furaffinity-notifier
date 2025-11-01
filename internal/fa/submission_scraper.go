@@ -313,8 +313,13 @@ func (fc *FurAffinityCollector) submissionsWithContent(entryChannel <-chan *Subm
 					wg.Done()
 				}()
 
-				// Fetch note content without marking it as read, because we will do a batch operation alter
-				entry.SetContent(fc.GetSubmissionContent(entry))
+				content := fc.GetSubmissionContent(entry)
+				// The content might have more detailed date information, so we should check the submission date again
+				if !fc.DateIsValid(entries.EntryTypeSubmission, content.date) {
+					return
+				}
+
+				entry.SetContent(content)
 				channel <- entry
 			}()
 		}
