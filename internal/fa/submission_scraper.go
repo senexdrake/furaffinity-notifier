@@ -402,12 +402,11 @@ func (fc *FurAffinityCollector) parseSubmission(entryElement *colly.HTMLElement,
 }
 
 func submissionSectionDate(el *colly.HTMLElement) (time.Time, error) {
-
 	timeFromAttr, err := util.EpochStringToTime(el.Attr("data-date"))
 	if err != nil {
 		return time.Time{}, err
 	}
-	return timeFromAttr.UTC().Truncate(24 * time.Hour), nil
+	return timeFromAttr.UTC(), nil
 }
 
 func submissionIdFromLink(link *url.URL) uint {
