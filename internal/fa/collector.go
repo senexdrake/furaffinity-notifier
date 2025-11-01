@@ -91,12 +91,18 @@ func (fc *FurAffinityCollector) configuredCollector(withCookies bool) *colly.Col
 	return c
 }
 
-func (fc *FurAffinityCollector) cookieMap() map[string]*http.Cookie {
+func (fc *FurAffinityCollector) userCookies() []db.UserCookie {
+	if fc.User.Cookies != nil {
+		return fc.User.Cookies
+	}
 	cookies := make([]db.UserCookie, 0)
 	db.Db().Where(&db.UserCookie{UserID: fc.UserID()}).Find(&cookies)
+	return cookies
+}
 
+func (fc *FurAffinityCollector) cookieMap() map[string]*http.Cookie {
 	cookieMap := make(map[string]*http.Cookie)
-	for _, cookie := range cookies {
+	for _, cookie := range fc.userCookies() {
 		cookieMap[cookie.Name] = &http.Cookie{Value: cookie.Value, Name: cookie.Name}
 	}
 	return cookieMap

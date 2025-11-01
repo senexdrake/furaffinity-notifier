@@ -109,7 +109,10 @@ func StartBackgroundUpdates(ctx context.Context, interval time.Duration) {
 
 func UpdateJob() {
 	users := make([]db.User, 0)
-	db.Db().Preload("EntryTypes").Find(&users)
+	db.Db().
+		Preload("EntryTypes").
+		Preload("Cookies").
+		Find(&users)
 
 	wg := sync.WaitGroup{}
 	// Do checks synchronously for now to prevent any massive rate limiting
