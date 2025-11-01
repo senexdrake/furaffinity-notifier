@@ -26,7 +26,7 @@ const (
 var truthyValues = []string{"1", "true", "yes", "on", "enable"}
 
 func NewSet[T comparable](elements []T) Set[T] {
-	set := make(Set[T])
+	set := make(Set[T], len(elements))
 	set.AddAll(elements)
 	return set
 }

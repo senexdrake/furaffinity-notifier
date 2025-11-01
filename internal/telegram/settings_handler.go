@@ -3,7 +3,6 @@ package telegram
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -143,13 +142,11 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 	}
 
 	entryType := dataToEntryType(queryData)
-	if !slices.Contains(entries.ValidEntryTypes(), entryType) {
+	if !entries.ValidEntryTypesSet().Contains(entryType) {
 		return
 	}
 
-	enabledEntryTypes := make(util.Set[entries.EntryType])
-	enabledEntryTypes.AddAll(user.EnabledEntryTypes())
-
+	enabledEntryTypes := util.NewSet(user.EnabledEntryTypes())
 	typeEnabled := enabledEntryTypes.Contains(entryType)
 	// Toggle status
 	typeEnabled = !typeEnabled

@@ -1,5 +1,7 @@
 package entries
 
+import "github.com/senexdrake/furaffinity-notifier/internal/util"
+
 type EntryType uint8
 
 const (
@@ -21,8 +23,16 @@ func ValidEntryTypes() []EntryType {
 	}
 }
 
+func ValidEntryTypesSet() util.Set[EntryType] {
+	return util.NewSet(ValidEntryTypes())
+}
+
 func EntryTypes() []EntryType {
 	return append(ValidEntryTypes(), EntryTypeInvalid)
+}
+
+func EntryTypesSet() util.Set[EntryType] {
+	return util.NewSet(EntryTypes())
 }
 
 func (e EntryType) Name() string {

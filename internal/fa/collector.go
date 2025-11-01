@@ -140,9 +140,7 @@ func (fc *FurAffinityCollector) SetUserFilter(entryType entries.EntryType, users
 		delete(fc.userFilters, entryType)
 		return
 	}
-	set := make(util.Set[string], len(users))
-	set.AddAll(util.Map(users, tools.NormalizeUsername))
-	fc.userFilters[entryType] = set
+	fc.userFilters[entryType] = util.NewSet(util.Map(users, tools.NormalizeUsername))
 }
 
 func (fc *FurAffinityCollector) UserID() uint {
