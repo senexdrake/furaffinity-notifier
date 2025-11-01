@@ -180,7 +180,7 @@ func BackwardsChannelWithCapacity[T any](channel <-chan T, cap uint) <-chan T {
 		buf = append(buf, t)
 	}
 
-	reversedChannel := make(chan T, 10)
+	reversedChannel := make(chan T)
 	go func() {
 		defer close(reversedChannel)
 		for _, t := range slices.Backward(buf) {
