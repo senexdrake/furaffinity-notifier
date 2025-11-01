@@ -1,10 +1,10 @@
 {{define "message"}}
-New journal on FurAffinity from <a href="{{.UserLink}}">{{.UserName}}</a>!
+New journal on FA from <a href="{{.User.ProfileUrl}}">{{.User.Name}}</a>!
 ---------------------------------
 <b>{{.Title}}</b>
 
 {{formatContent .Content}}
 ---------------------------------
-<a href="{{.Link}}">Open</a>
+<b><a href="{{.Link}}">View on FA</a></b>
 (Journal ID: <code>{{.ID}}</code>)
 {{end}}

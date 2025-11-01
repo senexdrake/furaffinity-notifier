@@ -63,7 +63,7 @@ func (ce *CommentEntry) Date() time.Time              { return ce.date }
 func (ce *CommentEntry) Link() *url.URL               { return ce.link }
 func (ce *CommentEntry) ID() uint                     { return ce.id }
 func (ce *CommentEntry) Title() string                { return ce.title }
-func (ce *CommentEntry) From() FurAffinityUser        { return ce.from }
+func (ce *CommentEntry) From() *FurAffinityUser       { return &ce.from }
 func (ce *CommentEntry) Content() EntryContent        { return ce.content }
 func (ce *CommentEntry) SetContent(ec EntryContent) {
 	switch ec.(type) {
@@ -80,7 +80,7 @@ func (cc *CommentContent) Text() string { return cc.text }
 
 func (je *JournalEntry) ID() uint                     { return je.id }
 func (je *JournalEntry) Title() string                { return je.title }
-func (je *JournalEntry) From() FurAffinityUser        { return je.from }
+func (je *JournalEntry) From() *FurAffinityUser       { return &je.from }
 func (je *JournalEntry) EntryType() entries.EntryType { return entries.EntryTypeJournal }
 func (je *JournalEntry) Link() *url.URL               { return je.link }
 func (je *JournalEntry) Content() EntryContent        { return je.content }

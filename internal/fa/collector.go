@@ -21,7 +21,7 @@ type (
 		Date() time.Time
 		Link() *url.URL
 		ID() uint
-		From() FurAffinityUser
+		From() *FurAffinityUser
 		Title() string
 		Content() EntryContent
 		SetContent(EntryContent)
@@ -193,11 +193,10 @@ func NewCollector(user *db.User) *FurAffinityCollector {
 }
 
 func (fu FurAffinityUser) Name() string {
-	name := fu.DisplayName
-	if len(name) == 0 {
-		name = fu.UserName
+	if fu.DisplayName != "" {
+		return fu.DisplayName
 	}
-	return name
+	return fu.UserName
 }
 
 func (fu FurAffinityUser) IsValid() bool {

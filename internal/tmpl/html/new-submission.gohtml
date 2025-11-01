@@ -1,10 +1,10 @@
 {{define "message"}}
-{{.Rating.Symbol}} New {{.Type.String}} submission on FurAffinity from <a href="{{.UserLink}}">{{.UserName}}</a>!
+{{.Rating.Symbol}} New {{.Type.String}} submission on FA from <a href="{{.User.ProfileUrl}}">{{.User.Name}}</a>!
 ---------------------------------
 <b>{{.Title}}</b>
 {{if .Description}}<blockquote expandable>{{formatContent .Description}}</blockquote>{{end}}
 ---------------------------------
-<a href="{{.Link}}">View on FA</a>
+<b><a href="{{.Link}}">View on FA</a></b>
 {{if .ThumbnailUrl}}<a href="{{.ThumbnailUrl}}">Open preview</a>{{end}}
 {{if .FullViewUrl}}<a href="{{.FullViewUrl}}">Open directly</a>{{end}}
 (Submission ID: <code>{{.ID}}</code>)

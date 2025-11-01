@@ -138,8 +138,8 @@ func (se *SubmissionEntry) Link() *url.URL {
 func (se *SubmissionEntry) ID() uint {
 	return se.id
 }
-func (se *SubmissionEntry) From() FurAffinityUser {
-	return se.from
+func (se *SubmissionEntry) From() *FurAffinityUser {
+	return &se.from
 }
 func (se *SubmissionEntry) Title() string {
 	return se.title

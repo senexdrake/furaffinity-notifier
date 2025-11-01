@@ -182,12 +182,11 @@ func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 
 	buf := new(bytes.Buffer)
 	err := newNoteMessageTemplate.Execute(buf, &tmpl.NewNotesContent{
-		ID:       summary.ID(),
-		Title:    summary.Title(),
-		UserLink: summary.From().ProfileUrl.String(),
-		UserName: summary.From().Name(),
-		Content:  noteContent,
-		Link:     summary.Link().String(),
+		ID:      summary.ID(),
+		Title:   summary.Title(),
+		User:    summary.From(),
+		Content: noteContent,
+		Link:    summary.Link().String(),
 	})
 
 	if err != nil {
@@ -235,9 +234,8 @@ func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 		ID:           submission.ID(),
 		Title:        submission.Title(),
 		Description:  submission.Description(),
-		UserLink:     submission.From().ProfileUrl.String(),
+		User:         submission.From(),
 		Link:         submission.Link().String(),
-		UserName:     submission.From().UserName,
 		Rating:       submission.Rating(),
 		Type:         submission.Type(),
 		ThumbnailUrl: thumbnailUrlString,
@@ -285,12 +283,11 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 	switch entry.EntryType() {
 	case entries.EntryTypeJournal:
 		err := newJournalMessageTemplate.Execute(buf, &tmpl.NewJournalsContent{
-			ID:       entry.ID(),
-			Title:    entry.Title(),
-			UserLink: entry.From().ProfileUrl.String(),
-			UserName: entry.From().Name(),
-			Content:  entryContent,
-			Link:     entry.Link().String(),
+			ID:      entry.ID(),
+			Title:   entry.Title(),
+			User:    entry.From(),
+			Content: entryContent,
+			Link:    entry.Link().String(),
 		})
 
 		if err != nil {
@@ -302,12 +299,11 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 		linkPreviewOptions.SetUrl(entry.Link())
 	case entries.EntryTypeJournalComment, entries.EntryTypeSubmissionComment:
 		err := newCommentMessageTemplate.Execute(buf, &tmpl.NewCommentsContent{
-			ID:       entry.ID(),
-			OnEntry:  entry.Title(),
-			UserLink: entry.From().ProfileUrl.String(),
-			UserName: entry.From().Name(),
-			Content:  entryContent,
-			Link:     entry.Link().String(),
+			ID:      entry.ID(),
+			OnEntry: entry.Title(),
+			User:    entry.From(),
+			Content: entryContent,
+			Link:    entry.Link().String(),
 		})
 
 		if err != nil {
