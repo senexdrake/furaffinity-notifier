@@ -36,6 +36,7 @@ type (
 		descriptionHtml string
 		full            *url.URL
 		thumbnail       *tools.ThumbnailUrl
+		date            time.Time
 	}
 
 	SubmissionData struct {
@@ -118,7 +119,16 @@ func (se *SubmissionEntry) Type() SubmissionType {
 	return se.submissionType
 }
 
+// Date returns the creation date of the submission. If no content is available, this is not the exact time but the time
+// acquired from the whole block of the submission page.
 func (se *SubmissionEntry) Date() time.Time {
+	content := se.Content()
+	if content != nil {
+		date := content.date
+		if !date.IsZero() {
+			return date
+		}
+	}
 	return se.date
 }
 func (se *SubmissionEntry) Link() *url.URL {
@@ -327,6 +337,16 @@ func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *Su
 
 	c.OnHTML(".submission-content", func(e *colly.HTMLElement) {
 		content.full = submissionFullView(entry.Type(), e)
+
+		// Try using the data-time attribute first
+		timeFromAttr, err := util.EpochStringToTime(
+			e.ChildAttr(".submission-id-container span.popup_date", "data-time"))
+		if err != nil {
+			logging.Warnf("Error parsing date for submission content (%d): %s", entry.ID(), err)
+			valid = false
+			return
+		}
+		content.date = timeFromAttr
 
 		descriptionElement := e.DOM.Find(".submission-description").First()
 		content.descriptionText = trimHtmlText(descriptionElement.Text())
