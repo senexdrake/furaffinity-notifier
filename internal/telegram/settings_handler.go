@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -138,9 +139,13 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 	if queryData == "cancel" {
 		convHandler.EndConversation(chatId)
 		editStatusMessage(message.ID, user)
+		return
 	}
 
 	entryType := dataToEntryType(queryData)
+	if !slices.Contains(entries.ValidEntryTypes(), entryType) {
+		return
+	}
 
 	enabledEntryTypes := make(util.Set[entries.EntryType])
 	enabledEntryTypes.AddAll(user.EnabledEntryTypes())
