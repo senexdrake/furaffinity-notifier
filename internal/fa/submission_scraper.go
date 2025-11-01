@@ -178,7 +178,6 @@ func (fc *FurAffinityCollector) submissionCollector() *colly.Collector {
 
 func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 	c := fc.submissionCollector()
-	userRegistrationDate := fc.registrationDate()
 
 	channel := make(chan *SubmissionEntry)
 
@@ -194,9 +193,7 @@ func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 				date = time.Time{}
 			}
 
-			// Return when submission has been sent before this user registered and the option
-			// to only notify about newer submissions has been set
-			if fc.OnlySinceRegistration && date.Before(userRegistrationDate) {
+			if !fc.DateIsValid(entries.EntryTypeSubmission, date) {
 				return
 			}
 

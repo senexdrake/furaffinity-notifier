@@ -110,7 +110,6 @@ func (fc *FurAffinityCollector) entryHandlerWrapper(
 	perEntryFunc func(chan<- Entry, *sync.WaitGroup, *colly.HTMLElement) Entry,
 ) {
 	wg := sync.WaitGroup{}
-	userRegistrationDate := fc.registrationDate()
 	// Add one to the WaitGroup to make sure it can't pass the Wait() call before these functions are being evaluated
 	wg.Add(1)
 	baseElement.ForEach("li", func(i int, el *colly.HTMLElement) {
@@ -120,7 +119,7 @@ func (fc *FurAffinityCollector) entryHandlerWrapper(
 		if entry == nil || entry.ID() == 0 {
 			return
 		}
-		if fc.OnlySinceRegistration && entry.Date().Before(userRegistrationDate) {
+		if !fc.DateIsValid(entry.EntryType(), entry.Date()) {
 			return
 		}
 		channel <- entry

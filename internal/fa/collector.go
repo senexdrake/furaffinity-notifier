@@ -42,6 +42,7 @@ type (
 	FurAffinityCollector struct {
 		LimitConcurrency      int
 		OnlySinceRegistration bool
+		OnlySinceTypeEnabled  bool
 		User                  *db.User
 		userFilters           map[entries.EntryType]util.Set[string]
 	}
@@ -152,11 +153,31 @@ func (fc *FurAffinityCollector) OnlyUnreadNotes() bool {
 	return fc.User.UnreadNotesOnly
 }
 
+// TypeEnabledSince returns the date at which the given entry type was enabled for the user.
+func (fc *FurAffinityCollector) TypeEnabledSince(entryType entries.EntryType) time.Time {
+	typeMap := fc.User.EntryTypeStatus()
+	t := typeMap[entryType]
+	return t.EnabledAt
+}
+
+// DateIsValid returns true if the given date is valid for the user. A date is valid if it is after the user's
+// registration date and if it is after the date at which the entry type was enabled for the user.
+func (fc *FurAffinityCollector) DateIsValid(entryType entries.EntryType, date time.Time) bool {
+	if fc.OnlySinceRegistration && date.Before(fc.registrationDate()) {
+		return false
+	}
+	if fc.OnlySinceTypeEnabled && date.Before(fc.TypeEnabledSince(entryType)) {
+		return false
+	}
+	return true
+}
+
 func NewCollector(user *db.User) *FurAffinityCollector {
 	return &FurAffinityCollector{
 		LimitConcurrency:      4,
 		User:                  user,
 		OnlySinceRegistration: true,
+		OnlySinceTypeEnabled:  true,
 		userFilters:           make(map[entries.EntryType]util.Set[string]),
 	}
 }

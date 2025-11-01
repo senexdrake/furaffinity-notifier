@@ -88,7 +88,6 @@ func (fc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteEntry {
 		guardChannel = make(chan struct{}, fc.LimitConcurrency)
 	}
 	noteChannel := make(chan *NoteEntry)
-	userRegistrationDate := fc.registrationDate()
 
 	c := fc.noteCollector()
 
@@ -103,9 +102,7 @@ func (fc *FurAffinityCollector) GetNotes(page uint) <-chan *NoteEntry {
 				return
 			}
 
-			// Return when note has been sent before this user registered and the option
-			// to only notify about newer notes has been set
-			if fc.OnlySinceRegistration && parsed.Date().Before(userRegistrationDate) {
+			if !fc.DateIsValid(entries.EntryTypeNote, parsed.Date()) {
 				return
 			}
 			if !fc.IsWhitelisted(entries.EntryTypeNote, parsed.From().UserName) {
