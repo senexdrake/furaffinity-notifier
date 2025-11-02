@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -139,12 +140,12 @@ func Db() *gorm.DB {
 
 		openedDb, err := gorm.Open(sqlite.Open(databasePath), &gorm.Config{})
 		if err != nil {
-			return nil
+			panic(fmt.Sprintf("error opening database: %s", err))
 		}
 
 		sqlDB, err := openedDb.DB()
 		if err != nil {
-			logging.Errorf("Error retrieving sql db interface: %s", err)
+			logging.Errorf("Error retrieving sql DB interface: %s", err)
 		} else {
 			// Fix SQlite "database is locked"
 			sqlDB.SetMaxOpenConns(1)
