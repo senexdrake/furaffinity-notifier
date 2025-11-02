@@ -1,1 +1,19 @@
-{{template "message" .}}
+{{block "header" . -}}
+{{.EntryType.Name}} on FA from <a href="{{.User.ProfileUrl}}">{{formatUser .User}}</a>!
+{{- end}}
+-----------------------------------------
+{{block "body" . -}}
+{{block "title" . -}}
+<b>{{.EntryTitle}}</b>
+{{- end}}
+
+{{block "content" . -}}
+{{formatContent .EntryContent}}
+{{- end}}
+{{- end}}
+-----------------------------------------
+{{block "footer" . -}}
+<b><a href="{{.ViewLink}}">View on FA</a></b>
+
+({{.EntryType.Name}} ID: <code>{{.EntryID}}</code>)
+{{- end}}

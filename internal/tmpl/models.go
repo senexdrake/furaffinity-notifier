@@ -1,8 +1,18 @@
 package tmpl
 
-import "github.com/senexdrake/furaffinity-notifier/internal/fa"
+import (
+	"github.com/senexdrake/furaffinity-notifier/internal/fa"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+)
 
 type (
+	TemplateContent interface {
+		EntryID() uint
+		EntryTitle() string
+		EntryContent() string
+		EntryType() entries.EntryType
+		ViewLink() string
+	}
 	NewNotesContent struct {
 		ID      uint
 		Title   string
@@ -17,6 +27,7 @@ type (
 		User    *fa.FurAffinityUser
 		Content string
 		Link    string
+		Type    entries.EntryType
 	}
 
 	NewJournalsContent struct {
@@ -39,3 +50,67 @@ type (
 		Type         fa.SubmissionType
 	}
 )
+
+func (n *NewNotesContent) EntryID() uint {
+	return n.ID
+}
+func (n *NewNotesContent) EntryTitle() string {
+	return n.Title
+}
+func (n *NewNotesContent) EntryContent() string {
+	return n.Content
+}
+func (n *NewNotesContent) EntryType() entries.EntryType {
+	return entries.EntryTypeNote
+}
+func (n *NewNotesContent) ViewLink() string {
+	return n.Link
+}
+
+func (n *NewJournalsContent) EntryID() uint {
+	return n.ID
+}
+func (n *NewJournalsContent) EntryTitle() string {
+	return n.Title
+}
+func (n *NewJournalsContent) EntryContent() string {
+	return n.Content
+}
+func (n *NewJournalsContent) EntryType() entries.EntryType {
+	return entries.EntryTypeJournal
+}
+func (n *NewJournalsContent) ViewLink() string {
+	return n.Link
+}
+
+func (n *NewSubmissionsContent) EntryID() uint {
+	return n.ID
+}
+func (n *NewSubmissionsContent) EntryTitle() string {
+	return n.Title
+}
+func (n *NewSubmissionsContent) EntryContent() string {
+	return n.Description
+}
+func (n *NewSubmissionsContent) EntryType() entries.EntryType {
+	return entries.EntryTypeSubmission
+}
+func (n *NewSubmissionsContent) ViewLink() string {
+	return n.Link
+}
+
+func (n *NewCommentsContent) EntryID() uint {
+	return n.ID
+}
+func (n *NewCommentsContent) EntryTitle() string {
+	return n.OnEntry
+}
+func (n *NewCommentsContent) EntryContent() string {
+	return n.Content
+}
+func (n *NewCommentsContent) EntryType() entries.EntryType {
+	return n.Type
+}
+func (n *NewCommentsContent) ViewLink() string {
+	return n.Link
+}

@@ -1,11 +1,19 @@
-{{define "message"}}
-{{.Rating.Symbol}} New {{.Type.String}} submission on FA from <a href="{{.User.ProfileUrl}}">{{.User.Name}}</a>!
----------------------------------
-<b>{{.Title}}</b>
-{{if .Description}}<blockquote expandable>{{formatContent .Description}}</blockquote>{{end}}
----------------------------------
+{{define "header" -}}
+    {{.Rating.Symbol}} {{.Type.String}} {{toLower .EntryType.Name}} on FA from <a href="{{.User.ProfileUrl}}">{{formatUser .User}}</a>!
+{{- end}}
+
+{{define "title" -}}
+    <b>{{.Title}}</b>
+{{- end}}
+
+{{define "content" -}}
+    {{if .Description}}<blockquote expandable>{{formatContent .Description}}</blockquote>{{end}}
+{{- end}}
+
+{{define "footer" -}}
 <b><a href="{{.Link}}">View on FA</a></b>
 {{if .ThumbnailUrl}}<a href="{{.ThumbnailUrl}}">Open preview</a>{{end}}
 {{if .FullViewUrl}}<a href="{{.FullViewUrl}}">Open directly</a>{{end}}
-(Submission ID: <code>{{.ID}}</code>)
-{{end}}
+
+({{.EntryType.Name}} ID: <code>{{.ID}}</code>)
+{{- end}}

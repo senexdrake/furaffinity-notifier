@@ -1,8 +1,11 @@
 package telegram
 
 import (
+	"fmt"
 	"html/template"
+	"strings"
 
+	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/tmpl"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
@@ -61,5 +64,14 @@ var conversationMessageSuffix = "\n\nTo cancel, use the /cancel command."
 func templateFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"formatContent": truncateMessage,
+		"toLower":       strings.ToLower,
+		"formatUser": func(u *fa.FurAffinityUser) string {
+			prefixedUserName := "~" + u.UserName
+			if u.DisplayName == "" || u.DisplayName == u.UserName {
+				return prefixedUserName
+			}
+
+			return fmt.Sprintf("%s (%s)", u.DisplayName, prefixedUserName)
+		},
 	}
 }

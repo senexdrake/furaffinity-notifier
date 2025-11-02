@@ -304,6 +304,7 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 			User:    entry.From(),
 			Content: entryContent,
 			Link:    entry.Link().String(),
+			Type:    entry.EntryType(),
 		})
 
 		if err != nil {

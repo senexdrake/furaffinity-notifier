@@ -1,10 +1,3 @@
-{{define "message"}}
-New comment on FA from <a href="{{.User.ProfileUrl}}">{{.User.Name}}</a>!
----------------------------------
+{{define "title" -}}
 On: <b>{{.OnEntry}}</b>
-
-{{formatContent .Content}}
----------------------------------
-<b><a href="{{.Link}}">View on FA</a></b>
-(Comment ID: <code>{{.ID}}</code>)
-{{end}}
+{{- end}}
