@@ -62,13 +62,16 @@ func (u *User) EntryTypeStatus() map[entries.EntryType]UserEntryType {
 }
 
 func (u *User) EnabledEntryTypes() []entries.EntryType {
-	entryTypes := make([]entries.EntryType, 0)
-
-	for entryType := range u.EntryTypeStatus() {
+	status := u.EntryTypeStatus()
+	entryTypes := make([]entries.EntryType, 0, len(status))
+	for entryType := range status {
 		entryTypes = append(entryTypes, entryType)
 	}
-
 	return entryTypes
+}
+
+func (u *User) EnabledEntryTypesSet() util.Set[entries.EntryType] {
+	return util.NewSet(u.EnabledEntryTypes())
 }
 
 func (u *User) GetLocation() (*time.Location, error) {
