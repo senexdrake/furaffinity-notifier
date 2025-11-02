@@ -314,6 +314,7 @@ func (fc *FurAffinityCollector) getJournalContent(entry *JournalEntry) *JournalC
 	valid := false
 
 	c.OnHTML("#site-content .journal-content", func(e *colly.HTMLElement) {
+		fc.removeHeadersAndFooters(e.DOM, entry.EntryType())
 		util.FixAutoLinks(e.DOM)
 		content.text = trimHtmlText(e.DOM.Text())
 		valid = len(content.text) > 0

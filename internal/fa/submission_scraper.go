@@ -354,6 +354,7 @@ func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *Su
 		content.date = timeFromAttr
 
 		descriptionElement := e.DOM.Find(".submission-description").First()
+		fc.removeHeadersAndFooters(descriptionElement, entries.EntryTypeSubmission)
 		content.descriptionText = trimHtmlText(descriptionElement.Text())
 		html, _ := descriptionElement.Html()
 		content.descriptionHtml = html
