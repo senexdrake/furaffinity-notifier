@@ -198,22 +198,33 @@ func updateForUser(user *db.User, doneCallback func()) {
 
 	if slices.Contains(entryTypes, entries.EntryTypeNote) {
 		for note := range c.GetNewNotesWithContent() {
-			telegram.HandleNewNote(note, user)
+			handleEntry(user, note, func() {
+				telegram.HandleNewNote(note, user)
+			})
 		}
 	}
 
 	if enableSubmissions && slices.Contains(entryTypes, entries.EntryTypeSubmission) {
 		for submission := range submissionsChannel(c) {
-			telegram.HandleNewSubmission(submission, user)
+			handleEntry(user, submission, func() {
+				telegram.HandleNewSubmission(submission, user)
+			})
 		}
 	}
 
 	if enableOtherEntries {
 		entryChannel := c.GetNewOtherEntriesWithContent(entryTypes...)
 		for entry := range entryChannel {
-			telegram.HandleNewEntry(entry, user)
+			handleEntry(user, entry, func() {
+				telegram.HandleNewEntry(entry, user)
+			})
 		}
 	}
+}
+
+func handleEntry(user *db.User, entry fa.BaseEntry, callback func()) {
+	logging.Infof("Notifying user %d about '%s' %d", user.ID, entry.EntryType().Name(), entry.ID())
+	callback()
 }
 
 func submissionsChannel(c *fa.FurAffinityCollector) <-chan *fa.SubmissionEntry {

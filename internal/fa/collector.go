@@ -16,13 +16,17 @@ import (
 )
 
 type (
-	Entry interface {
+	BaseEntry interface {
 		EntryType() entries.EntryType
 		Date() time.Time
 		Link() *url.URL
 		ID() uint
 		From() *FurAffinityUser
 		Title() string
+	}
+
+	Entry interface {
+		BaseEntry
 		Content() EntryContent
 		SetContent(EntryContent)
 		HasContent() bool
