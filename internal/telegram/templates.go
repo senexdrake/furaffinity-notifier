@@ -56,6 +56,8 @@ Current settings:
 <b>Journal Comments</b>: %s
 `)
 
+var conversationMessageSuffix = "\n\nTo cancel, use the /cancel command."
+
 func templateFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"formatContent": truncateMessage,

@@ -55,7 +55,7 @@ func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
-		Text:      "Please input cookies 'a' and 'b' im the following form:\n\n<code>a=COOKIE, b=COOKIE</code>",
+		Text:      conversationMessage("Please input cookies 'a' and 'b' im the following form:\n\n<code>a=COOKIE, b=COOKIE</code>"),
 		ReplyMarkup: &models.ForceReply{
 			ForceReply:            true,
 			InputFieldPlaceholder: "a=COOKIE_1, b=COOKIE_2",
@@ -90,7 +90,7 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	if len(cookies) != 2 {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "You entered invalid cookies. Please try again.",
+			Text:   conversationMessage("You entered invalid cookies. Please try again."),
 		})
 		return
 	}
@@ -102,7 +102,7 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	convHandler.EndConversation(update.Message.Chat.ID)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   "Success",
+		Text:   "Updated your FA cookies!",
 	})
 }
 
@@ -112,7 +112,7 @@ func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
-		Text:      "Please input your timezone",
+		Text:      conversationMessage("Please input your timezone"),
 		ReplyMarkup: &models.ForceReply{
 			ForceReply:            true,
 			InputFieldPlaceholder: "Enter timezone, for example: Europe/Berlin",
@@ -126,7 +126,7 @@ func timezoneInputHandler(ctx context.Context, b *bot.Bot, update *models.Update
 	if err != nil || loc == nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   fmt.Sprintf("The timezone you specified is invalid. Please try again.\nError: %s", err),
+			Text:   conversationMessage(fmt.Sprintf("The timezone you specified is invalid. Please try again.\nError: %s", err)),
 		})
 		return
 	}

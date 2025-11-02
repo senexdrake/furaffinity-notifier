@@ -95,3 +95,7 @@ func linkPreviewWithThumbnailOrFullView(fullView *url.URL, thumbnail *tools.Thum
 
 	return previewOptions
 }
+
+func conversationMessage(msg string) string {
+	return msg + conversationMessageSuffix
+}
