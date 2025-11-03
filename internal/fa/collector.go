@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
@@ -69,7 +68,6 @@ const requestTimeout = 30 * time.Second
 var (
 	furaffinityBaseUrl, _         = url.Parse(faBaseUrl)
 	furaffinityDefaultLocation, _ = time.LoadLocation(faTimezone)
-	usernameRegex                 = regexp.MustCompile(".*/user/([\\w]*)/*")
 )
 
 func (fc *FurAffinityCollector) httpClient() *http.Client {
@@ -235,7 +233,12 @@ func userFromNoteElement(e *colly.HTMLElement) *FurAffinityUser {
 
 	// Determine the username from the profile URL
 	if user.ProfileUrl != nil {
-		user.UserName = usernameFromLink(user.ProfileUrl)
+		parsedUserName, err := tools.UsernameFromProfileLink(user.ProfileUrl)
+		if err != nil {
+			logging.Warnf("Error parsing username from profile link for note: %s", err)
+		} else {
+			user.UserName = parsedUserName
+		}
 	}
 
 	// Fallback to the old mechanism of extracting the username from the element text.
@@ -278,17 +281,11 @@ func userFromSubmissionPageElement(e *colly.HTMLElement) *FurAffinityUser {
 		return &user
 	}
 
-	user.UserName = usernameFromLink(user.ProfileUrl)
+	parsedUserName, err := tools.UsernameFromProfileLink(user.ProfileUrl)
+	if err != nil {
+		logging.Errorf("Error parsing username from profile link for submission: %s", err)
+		return &user
+	}
+	user.UserName = parsedUserName
 	return &user
-}
-
-func usernameFromLink(link *url.URL) string {
-	if link == nil {
-		return ""
-	}
-	matches := usernameRegex.FindStringSubmatch(link.Path)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-	return ""
 }

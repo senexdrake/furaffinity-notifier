@@ -2,6 +2,7 @@ package tools
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -71,10 +72,10 @@ func UsernameFromProfileLink(link *url.URL) (string, error) {
 	matches := profileUrlUsernameRegex.FindStringSubmatch(link.Path)
 	if len(matches) > 1 {
 		username := matches[1]
-		if len(username) == 0 {
-			return "", errors.New("empty username")
+		if username == "" {
+			return "", errors.New(fmt.Sprintf("empty username in profile link '%s'", link))
 		}
 		return username, nil
 	}
-	return "", errors.New("no username found in profile link")
+	return "", errors.New(fmt.Sprintf("no username found in profile link '%s'", link))
 }
