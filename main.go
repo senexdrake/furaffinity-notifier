@@ -228,11 +228,9 @@ func entryHandlerWrapper[T fa.BaseEntry](user *db.User, entryChannel <-chan T, e
 		logging.Errorf("user is nil, skipping update")
 		return
 	}
-	defer func() {
-		if err := recover(); err != nil {
-			logging.Errorf("Recovered from panic while running update for user %d: %s", user.ID, err)
-		}
-	}()
+	defer util.PanicHandler(func(err any) {
+		logging.Errorf("Recovered from panic while running update for user %d: %s", user.ID, err)
+	})
 
 	for entry := range entryChannel {
 		logging.Infof("Notifying user %d about '%s' %d", user.ID, entry.EntryType().Name(), entry.ID())

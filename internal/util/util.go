@@ -190,3 +190,9 @@ func BackwardsChannelWithCapacity[T any](channel <-chan T, cap uint) <-chan T {
 
 	return reversedChannel
 }
+
+func PanicHandler(handler func(err any)) {
+	if err := recover(); err != nil {
+		handler(err)
+	}
+}
