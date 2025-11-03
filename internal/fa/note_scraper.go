@@ -26,7 +26,7 @@ type (
 		id        uint
 		title     string
 		date      time.Time
-		from      FurAffinityUser
+		from      *FurAffinityUser
 		link      *url.URL
 		content   *NoteContent
 		WasUnread bool
@@ -41,7 +41,7 @@ func (ne *NoteEntry) ID() uint                     { return ne.id }
 func (ne *NoteEntry) Title() string                { return ne.title }
 func (ne *NoteEntry) Date() time.Time              { return ne.date }
 func (ne *NoteEntry) Link() *url.URL               { return ne.link }
-func (ne *NoteEntry) From() *FurAffinityUser       { return &ne.from }
+func (ne *NoteEntry) From() *FurAffinityUser       { return ne.from }
 func (ne *NoteEntry) Content() EntryContent        { return ne.content }
 func (ne *NoteEntry) SetContent(ec EntryContent) {
 	switch ec.(type) {

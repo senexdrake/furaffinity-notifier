@@ -12,6 +12,7 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -215,36 +216,47 @@ func trimHtmlText(s string) string {
 	return util.TrimHtmlText(s)
 }
 
-func userFromNoteElement(e *colly.HTMLElement) FurAffinityUser {
-	if e == nil {
-		return FurAffinityUser{UserName: faDefaultUsername}
-	}
-
-	var profileUrl *url.URL
-	usernameElement := e.DOM.Find(".js-userName-block")
-	href, exists := usernameElement.Attr("href")
-	if exists {
-		profileUrl, _ = FurAffinityUrl().Parse(href)
-	}
-	username := strings.Trim(trimHtmlText(usernameElement.Text()), "~")
-	if profileUrl == nil && len(username) > 0 {
-		// Just guess the URL
-		profileUrl, _ = FurAffinityUrl().Parse("/user/" + username + "/")
-	}
-
-	displayName := trimHtmlText(e.ChildText(".js-displayName-block"))
-
-	return FurAffinityUser{
-		DisplayName: displayName,
-		UserName:    username,
-		ProfileUrl:  profileUrl,
-	}
-}
-
-func userFromSubmissionPageElement(e *colly.HTMLElement) FurAffinityUser {
+func userFromNoteElement(e *colly.HTMLElement) *FurAffinityUser {
 	user := FurAffinityUser{UserName: faDefaultUsername}
 	if e == nil {
-		return user
+		return &user
+	}
+
+	userLinkElement := e.DOM.Find("a").First()
+	href, exists := userLinkElement.Attr("href")
+	if exists {
+		profileUrl, err := FurAffinityUrl().Parse(href)
+		if err != nil {
+			logging.Warnf("Error parsing profile URL from note: %s", err)
+		} else {
+			user.ProfileUrl = profileUrl
+		}
+	}
+
+	// Determine the username from the profile URL
+	if user.ProfileUrl != nil {
+		user.UserName = usernameFromLink(user.ProfileUrl)
+	}
+
+	// Fallback to the old mechanism of extracting the username from the element text.
+	if user.UserName == "" {
+		usernameElement := e.DOM.Find(".js-userName-block")
+		user.UserName = strings.Trim(trimHtmlText(usernameElement.Text()), "~")
+	}
+
+	if user.ProfileUrl == nil && user.UserName != "" {
+		// Just guess the URL
+		user.ProfileUrl, _ = FurAffinityUrl().Parse("/user/" + user.UserName + "/")
+	}
+
+	user.DisplayName = trimHtmlText(e.ChildText(".js-displayName-block"))
+	return &user
+}
+
+func userFromSubmissionPageElement(e *colly.HTMLElement) *FurAffinityUser {
+	user := FurAffinityUser{UserName: faDefaultUsername}
+	if e == nil {
+		return &user
 	}
 
 	e.ForEach("figcaption a", func(i int, element *colly.HTMLElement) {
@@ -263,11 +275,11 @@ func userFromSubmissionPageElement(e *colly.HTMLElement) FurAffinityUser {
 	})
 
 	if user.ProfileUrl == nil {
-		return user
+		return &user
 	}
 
 	user.UserName = usernameFromLink(user.ProfileUrl)
-	return user
+	return &user
 }
 
 func usernameFromLink(link *url.URL) string {

@@ -22,7 +22,7 @@ type (
 	SubmissionEntry struct {
 		id             uint
 		title          string
-		from           FurAffinityUser
+		from           *FurAffinityUser
 		rating         SubmissionRating
 		submissionType SubmissionType
 		date           time.Time
@@ -139,7 +139,7 @@ func (se *SubmissionEntry) ID() uint {
 	return se.id
 }
 func (se *SubmissionEntry) From() *FurAffinityUser {
-	return &se.from
+	return se.from
 }
 func (se *SubmissionEntry) Title() string {
 	return se.title
