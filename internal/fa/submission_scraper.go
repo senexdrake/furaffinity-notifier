@@ -314,6 +314,10 @@ func (fc *FurAffinityCollector) submissionsWithContent(entryChannel <-chan *Subm
 				}()
 
 				content := fc.GetSubmissionContent(entry)
+				if content == nil {
+					logging.Warnf("Failed to retrieve content for submission %d", entry.ID())
+					return
+				}
 				// The content might have more detailed date information, so we should check the submission date again
 				if !fc.DateIsValid(entries.EntryTypeSubmission, content.date) {
 					return
@@ -341,7 +345,17 @@ func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *Su
 	valid := false
 
 	c.OnHTML(".submission-content", func(e *colly.HTMLElement) {
+		if valid {
+			// content has already been found
+			return
+		}
+
 		content.full = submissionFullView(entry.Type(), e)
+		if content.full == nil {
+			logging.Warnf("No full view link found for submission %d", entry.ID())
+			valid = false
+			return
+		}
 
 		// Try using the data-time attribute first
 		timeFromAttr, err := util.EpochStringToTime(
@@ -354,12 +368,19 @@ func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *Su
 		content.date = timeFromAttr
 
 		descriptionElement := e.DOM.Find(".submission-description").First()
+		if descriptionElement.Length() == 0 {
+			logging.Warnf("No description element found for submission %d", entry.ID())
+			valid = false
+			return
+		}
 		fc.removeHeadersAndFooters(descriptionElement, entries.EntryTypeSubmission)
 		content.descriptionText = trimHtmlText(descriptionElement.Text())
+		if content.descriptionText == "" {
+			logging.Warnf("Empty description for submission %d, ignoring", entry.ID())
+		}
 		html, _ := descriptionElement.Html()
 		content.descriptionHtml = html
-
-		valid = content.full != nil && content.descriptionText != ""
+		valid = true
 	})
 
 	c.Visit(entry.Link().String())
@@ -483,6 +504,7 @@ func submissionFullView(submissionType SubmissionType, el *colly.HTMLElement) *u
 	imgElement := el.DOM.Find(".submission-image img").First()
 	fullViewSrc, found := imgElement.Attr("data-fullview-src")
 	if !found || fullViewSrc == "" {
+		logging.Warnf("No 'data-fullview-src' found on submission img element")
 		return nil
 	}
 
