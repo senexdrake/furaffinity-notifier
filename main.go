@@ -184,6 +184,10 @@ func applyUserFilters(c *fa.FurAffinityCollector) {
 
 func updateForUser(user *db.User, doneCallback func()) {
 	defer doneCallback()
+	if user == nil {
+		logging.Errorf("user is nil, skipping update")
+		return
+	}
 	logging.Debugf("Running update for user %d", user.ID)
 	c := fa.NewCollector(user)
 	c.LimitConcurrency = 4
@@ -197,34 +201,44 @@ func updateForUser(user *db.User, doneCallback func()) {
 	entryTypes := user.EnabledEntryTypes()
 
 	if slices.Contains(entryTypes, entries.EntryTypeNote) {
-		for note := range c.GetNewNotesWithContent() {
-			handleEntry(user, note, func() {
-				telegram.HandleNewNote(note, user)
-			})
-		}
+		channel := c.GetNewNotesWithContent()
+		entryHandlerWrapper(user, channel, func(note *fa.NoteEntry) {
+			telegram.HandleNewNote(note, user)
+		})
 	}
 
 	if enableSubmissions && slices.Contains(entryTypes, entries.EntryTypeSubmission) {
-		for submission := range submissionsChannel(c) {
-			handleEntry(user, submission, func() {
-				telegram.HandleNewSubmission(submission, user)
-			})
-		}
+		channel := submissionsChannel(c)
+		entryHandlerWrapper(user, channel, func(submission *fa.SubmissionEntry) {
+			telegram.HandleNewSubmission(submission, user)
+		})
 	}
 
 	if enableOtherEntries {
-		entryChannel := c.GetNewOtherEntriesWithContent(entryTypes...)
-		for entry := range entryChannel {
-			handleEntry(user, entry, func() {
-				telegram.HandleNewEntry(entry, user)
-			})
-		}
+		channel := c.GetNewOtherEntriesWithContent(entryTypes...)
+		entryHandlerWrapper(user, channel, func(entry fa.Entry) {
+			telegram.HandleNewEntry(entry, user)
+		})
 	}
+	logging.Debugf("Finished update for user %d", user.ID)
 }
 
-func handleEntry(user *db.User, entry fa.BaseEntry, callback func()) {
-	logging.Infof("Notifying user %d about '%s' %d", user.ID, entry.EntryType().Name(), entry.ID())
-	callback()
+func entryHandlerWrapper[T fa.BaseEntry](user *db.User, entryChannel <-chan T, entryHandler func(entry T)) {
+	if user == nil {
+		logging.Errorf("user is nil, skipping update")
+		return
+	}
+	defer func() {
+		if err := recover(); err != nil {
+			logging.Errorf("Recovered from panic while running update for user %d: %s", user.ID, err)
+		}
+	}()
+
+	for entry := range entryChannel {
+		logging.Infof("Notifying user %d about '%s' %d", user.ID, entry.EntryType().Name(), entry.ID())
+		entryHandler(entry)
+	}
+
 }
 
 func submissionsChannel(c *fa.FurAffinityCollector) <-chan *fa.SubmissionEntry {
