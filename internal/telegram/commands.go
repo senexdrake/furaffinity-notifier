@@ -10,6 +10,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
+	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -107,12 +108,24 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 }
 
 func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	convHandler.SetActiveConversationStage(update.Message.Chat.ID, stageTimezoneInput)
+	chatId := update.Message.Chat.ID
+	user, _ := userFromChatId(chatId, nil)
+	if user == nil {
+		logging.Errorf("Error getting user from chat ID %d", chatId)
+		return
+	}
+	convHandler.SetActiveConversationStage(chatId, stageTimezoneInput)
+
+	timezone := user.Timezone
+	location, err := user.GetLocation()
+	if err == nil {
+		timezone = location.String()
+	}
 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
-		Text:      conversationMessage("Please input your timezone"),
+		Text:      conversationMessage(fmt.Sprintf("Please input your timezone.\nCurrent timezone is <code>%s</code>.", timezone)),
 		ReplyMarkup: &models.ForceReply{
 			ForceReply:            true,
 			InputFieldPlaceholder: "Enter timezone, for example: Europe/Berlin",
@@ -143,7 +156,7 @@ func timezoneInputHandler(ctx context.Context, b *bot.Bot, update *models.Update
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
-		Text:      fmt.Sprintf("Successfully update timezone to <b>%s</b>", user.Timezone),
+		Text:      fmt.Sprintf("Successfully update timezone to <code>%s</code>", user.Timezone),
 	})
 }
 
