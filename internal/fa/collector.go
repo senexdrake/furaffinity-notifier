@@ -1,12 +1,14 @@
 package fa
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
@@ -184,6 +186,24 @@ func (fc *FurAffinityCollector) channelBufferSize() int {
 	return fc.LimitConcurrency
 }
 
+func (fc *FurAffinityCollector) IsLoggedIn() (bool, error) {
+	c := fc.configuredCollector(true)
+	c.Async = false
+
+	loggedIn := false
+
+	c.OnResponse(func(r *colly.Response) {
+		loggedIn = isLoggedIn(r)
+	})
+
+	err := c.Visit(faBaseUrl + "/controls/settings")
+	if err != nil {
+		return false, err
+	}
+	c.Wait()
+	return loggedIn, nil
+}
+
 func NewCollector(user *db.User) *FurAffinityCollector {
 	return &FurAffinityCollector{
 		LimitConcurrency:            4,
@@ -288,4 +308,27 @@ func userFromSubmissionPageElement(e *colly.HTMLElement) *FurAffinityUser {
 	}
 	user.UserName = parsedUserName
 	return &user
+}
+
+func isLoggedIn(resp *colly.Response) bool {
+	switch resp.StatusCode {
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return false
+	}
+
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body)) // A byte reader does not have to be closed
+	if err != nil {
+		logging.Errorf("Error parsing login check responnse: %s", err)
+		return false
+	}
+
+	pageBody := doc.Find("body")
+
+	loginMessageContainer := pageBody.Find("#site-content .notice-message")
+	if loginMessageContainer.Length() == 0 {
+		return true
+	}
+	loginMessageText := strings.ToLower(loginMessageContainer.Text())
+	loginMessagePresent := strings.Contains(loginMessageText, "system message") && strings.Contains(loginMessageText, "please log in")
+	return !loginMessagePresent
 }

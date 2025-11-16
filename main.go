@@ -193,6 +193,24 @@ func updateForUser(user *db.User, doneCallback func()) {
 	c.LimitConcurrency = 4
 	c.IterateSubmissionsBackwards = iterateSubmissionsBackwards
 
+	// Check whether the user has valid credentials
+	loggedIn, err := c.IsLoggedIn()
+	if err != nil {
+		logging.Errorf("Error checking login status for user %d: %s", c.UserID(), err)
+		return
+	}
+	if !loggedIn {
+		logging.Warnf("User %d does not have valid credentials, skipping", c.UserID())
+		// Send notification if the user has not been notified yet
+		if user.InvalidCredentialsSentAt == nil {
+			telegram.HandleInvalidCredentials(user, true)
+		}
+		return
+	}
+
+	// User logged in, reset any invalid credentials notification data
+	user.ResetCredentialsValid(nil)
+
 	// set filters
 	if enableUserFilters {
 		applyUserFilters(c)

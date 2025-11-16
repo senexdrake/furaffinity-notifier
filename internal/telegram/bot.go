@@ -174,6 +174,21 @@ func commandHandlers() []*CommandHandler {
 	return commands
 }
 
+func HandleInvalidCredentials(user *db.User, updateDatabase bool) {
+	_, err := botInstance.SendMessage(botContext, &bot.SendMessageParams{
+		ChatID:    user.TelegramChatId,
+		ParseMode: models.ParseModeHTML,
+		Text:      "Your cookies are invalid. Please set them again using the /cookies command.",
+	})
+	if err != nil {
+		logging.Errorf("error sending invalid credentials notification: %s", err)
+		return
+	}
+	if updateDatabase {
+		user.SetCredentialsValidAndSave(false, nil)
+	}
+}
+
 func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 	noteContent := "-- NO CONTENT --"
 	if summary.HasContent() {

@@ -20,12 +20,13 @@ type (
 	}
 	User struct {
 		gorm.Model
-		TelegramChatId  int64           `gorm:"uniqueIndex"`
-		UnreadNotesOnly bool            `gorm:"default:true;not null"`
-		KnownEntries    []KnownEntry    `gorm:"constraint:OnDelete:CASCADE;"`
-		Cookies         []UserCookie    `gorm:"constraint:OnDelete:CASCADE;"`
-		EntryTypes      []UserEntryType `gorm:"constraint:OnDelete:CASCADE;"`
-		Timezone        string          `gorm:"default:'UTC';not null"`
+		TelegramChatId           int64           `gorm:"uniqueIndex"`
+		UnreadNotesOnly          bool            `gorm:"default:true;not null"`
+		KnownEntries             []KnownEntry    `gorm:"constraint:OnDelete:CASCADE;"`
+		Cookies                  []UserCookie    `gorm:"constraint:OnDelete:CASCADE;"`
+		EntryTypes               []UserEntryType `gorm:"constraint:OnDelete:CASCADE;"`
+		Timezone                 string          `gorm:"default:'UTC';not null"`
+		InvalidCredentialsSentAt *time.Time
 	}
 
 	UserCookie struct {
@@ -103,6 +104,34 @@ func (u *User) EnableEntryType(entryType entries.EntryType, enabled bool, tx *go
 
 }
 
+func (u *User) SetCredentialsValid(valid bool) {
+	if valid {
+		u.InvalidCredentialsSentAt = nil
+	} else {
+		now := time.Now()
+		u.InvalidCredentialsSentAt = &now
+	}
+}
+
+func (u *User) ResetCredentialsValid(tx *gorm.DB) {
+	if u.InvalidCredentialsSentAt == nil {
+		return
+	}
+	u.SetCredentialsValidAndSave(true, tx)
+}
+
+func (u *User) SetCredentialsValidAndSave(valid bool, tx *gorm.DB) {
+	u.SetCredentialsValid(valid)
+	if tx == nil {
+		tx = Db()
+	}
+	tx.Save(u)
+}
+
+func (u *User) InvalidCredentialsNotified() bool {
+	return u.InvalidCredentialsSentAt != nil
+}
+
 func (e *KnownEntry) BeforeSave(tx *gorm.DB) error {
 	e.NotifiedAt = util.ToUTC(e.NotifiedAt)
 	e.SentDate = e.SentDate.UTC()
@@ -125,7 +154,7 @@ func (uet *UserEntryType) BeforeSave(tx *gorm.DB) error {
 	return nil
 }
 
-const latestSchemaVersion = 5
+const latestSchemaVersion = 6
 
 var db *gorm.DB
 

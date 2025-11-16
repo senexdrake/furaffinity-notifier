@@ -23,6 +23,27 @@ func migrate() {
 
 	schemaInfo := SchemaInfo{}
 	db.First(&schemaInfo)
+
+	migrateV6(migrator, &schemaInfo)
+}
+
+func migrateV6(migrator gorm.Migrator, si *SchemaInfo) {
+	if si.Version >= 6 {
+		return
+	}
+
+	invalidCredsCol := "invalid_credentials_sent_at"
+	if !migrator.HasColumn(&User{}, invalidCredsCol) {
+		err := migrator.AddColumn(&User{}, invalidCredsCol)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	err := updateSchemaVersion(6)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func updateSchemaVersion(toVersion uint) error {
