@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"html"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -195,4 +196,12 @@ func PanicHandler(handler func(err any)) {
 	if err := recover(); err != nil {
 		handler(err)
 	}
+}
+
+func EnvBool(key string, defaultValue bool) (bool, error) {
+	rawBool := os.Getenv(PrefixEnvVar(key))
+	if rawBool != "" {
+		return strconv.ParseBool(rawBool)
+	}
+	return defaultValue, nil
 }

@@ -29,6 +29,7 @@ const enableSubmissionsContent = true
 
 var entryUserFilters = make(map[entries.EntryType][]string)
 var iterateSubmissionsBackwards = true
+var enableLoginCheck = true
 
 func init() {
 	dotenvErr := godotenv.Load()
@@ -58,17 +59,10 @@ func init() {
 	}
 
 	if enableSubmissions {
-		backwardsIterationRaw := os.Getenv(util.PrefixEnvVar("SUBMISSIONS_BACKWARDS"))
-		if backwardsIterationRaw != "" {
-			backwardsIteration, err := strconv.ParseBool(backwardsIterationRaw)
-			if err != nil {
-				logging.Errorf("Error parsing bool: %s", err)
-			} else {
-				iterateSubmissionsBackwards = backwardsIteration
-			}
-		}
-
+		iterateSubmissionsBackwards = envBoolLog("SUBMISSIONS_BACKWARDS", iterateSubmissionsBackwards)
 	}
+
+	enableLoginCheck = envBoolLog("ENABLE_LOGIN_CHECK", enableLoginCheck)
 }
 
 func main() {
@@ -193,23 +187,25 @@ func updateForUser(user *db.User, doneCallback func()) {
 	c.LimitConcurrency = 4
 	c.IterateSubmissionsBackwards = iterateSubmissionsBackwards
 
-	// Check whether the user has valid credentials
-	loggedIn, err := c.IsLoggedIn()
-	if err != nil {
-		logging.Errorf("Error checking login status for user %d: %s", c.UserID(), err)
-		return
-	}
-	if !loggedIn {
-		logging.Warnf("User %d does not have valid credentials, skipping", c.UserID())
-		// Send notification if the user has not been notified yet
-		if user.InvalidCredentialsSentAt == nil {
-			telegram.HandleInvalidCredentials(user, true)
+	if enableLoginCheck {
+		// Check whether the user has valid credentials
+		loggedIn, err := c.IsLoggedIn()
+		if err != nil {
+			logging.Errorf("Error checking login status for user %d: %s", c.UserID(), err)
+			return
 		}
-		return
-	}
+		if !loggedIn {
+			logging.Warnf("User %d does not have valid credentials, skipping", c.UserID())
+			// Send notification if the user has not been notified yet
+			if user.InvalidCredentialsSentAt == nil {
+				telegram.HandleInvalidCredentials(user, true)
+			}
+			return
+		}
 
-	// User logged in, reset any invalid credentials notification data
-	user.ResetCredentialsValid(nil)
+		// User logged in, reset any invalid credentials notification data
+		user.ResetCredentialsValid(nil)
+	}
 
 	// set filters
 	if enableUserFilters {
@@ -262,4 +258,13 @@ func submissionsChannel(c *fa.FurAffinityCollector) <-chan *fa.SubmissionEntry {
 		return c.GetNewSubmissionEntriesWithContent()
 	}
 	return c.GetNewSubmissionEntries()
+}
+
+func envBoolLog(key string, defaultValue bool) bool {
+	ret, err := util.EnvBool(key, defaultValue)
+	if err != nil {
+		logging.Errorf("Error parsing bool for key '%s': %s", key, err)
+		return defaultValue
+	}
+	return ret
 }
