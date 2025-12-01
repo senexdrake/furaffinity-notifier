@@ -303,6 +303,7 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 			User:    entry.From(),
 			Content: entryContent,
 			Link:    entry.Link().String(),
+			Rating:  entry.Rating(),
 		})
 
 		if err != nil {
@@ -320,6 +321,7 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 			Content: entryContent,
 			Link:    entry.Link().String(),
 			Type:    entry.EntryType(),
+			Rating:  entry.Rating(),
 		})
 
 		if err != nil {

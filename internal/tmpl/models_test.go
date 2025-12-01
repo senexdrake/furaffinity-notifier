@@ -23,6 +23,7 @@ var (
 		Title:   "Test Note",
 		Content: "Note content",
 		Link:    "http://example.com/note/12345",
+		Rating:  fa.RatingAdult,
 	}
 	notesContentEmpty = &NewNotesContent{
 		ID:      0,
@@ -158,6 +159,25 @@ func TestNewNotesContent_ViewLink(t *testing.T) {
 	})
 }
 
+func TestNewNewNotesContent_EntryRating(t *testing.T) {
+	tests := TestStructList[fa.Rating]{
+		{
+			name:     "returns adult rating for notes content with data",
+			content:  notesContentWithData,
+			expected: fa.RatingAdult,
+		},
+		{
+			name:     "returns general rating for empty",
+			content:  notesContentEmpty,
+			expected: fa.RatingGeneral,
+		},
+	}
+
+	runTests(t, tests, func(tc TemplateContent) fa.Rating {
+		return tc.EntryRating()
+	})
+}
+
 // Test fixtures for NewJournalsContent
 var (
 	journalsContentWithData = &NewJournalsContent{
@@ -166,6 +186,7 @@ var (
 		User:    &fa.FurAffinityUser{},
 		Content: "This is a journal entry",
 		Link:    "http://example.com/journal/98765",
+		Rating:  fa.RatingMature,
 	}
 	journalsContentEmpty = &NewJournalsContent{
 		ID:      0,
@@ -180,6 +201,7 @@ var (
 		User:    &fa.FurAffinityUser{},
 		Content: "Line 1\nLine 2\nLine 3\nLine 4",
 		Link:    "http://example.com/journal/555",
+		Rating:  fa.RatingAdult,
 	}
 )
 
@@ -303,6 +325,30 @@ func TestNewJournalsContent_ViewLink(t *testing.T) {
 	})
 }
 
+func TestNewNewJournalsContent_EntryRating(t *testing.T) {
+	tests := TestStructList[fa.Rating]{
+		{
+			name:     "returns mature rating for full data",
+			content:  journalsContentWithData,
+			expected: fa.RatingMature,
+		},
+		{
+			name:     "returns general rating for empty",
+			content:  journalsContentEmpty,
+			expected: fa.RatingGeneral,
+		},
+		{
+			name:     "returns adult rating for multiline",
+			content:  journalsContentWithMultiline,
+			expected: fa.RatingAdult,
+		},
+	}
+
+	runTests(t, tests, func(tc TemplateContent) fa.Rating {
+		return tc.EntryRating()
+	})
+}
+
 // Test fixtures for NewSubmissionsContent
 var (
 	submissionsContentWithData = &NewSubmissionsContent{
@@ -313,7 +359,7 @@ var (
 		Description:  "This is a beautiful submission",
 		ThumbnailUrl: "http://example.com/thumb.jpg",
 		FullViewUrl:  "http://example.com/view.jpg",
-		Rating:       fa.SubmissionRatingGeneral,
+		Rating:       fa.RatingMature,
 		Type:         fa.SubmissionTypeImage,
 	}
 	submissionsContentEmpty = &NewSubmissionsContent{
@@ -454,6 +500,30 @@ func TestNewSubmissionsContent_ViewLink(t *testing.T) {
 	})
 }
 
+func TestNewSubmissionsContent_EntryRating(t *testing.T) {
+	tests := TestStructList[fa.Rating]{
+		{
+			name:     "returns mature rating for full data",
+			content:  submissionsContentWithData,
+			expected: fa.RatingMature,
+		},
+		{
+			name:     "returns general rating for empty",
+			content:  submissionsContentEmpty,
+			expected: fa.RatingGeneral,
+		},
+		{
+			name:     "returns general rating for minimal",
+			content:  submissionsContentMinimal,
+			expected: fa.RatingGeneral,
+		},
+	}
+
+	runTests(t, tests, func(tc TemplateContent) fa.Rating {
+		return tc.EntryRating()
+	})
+}
+
 // Test fixtures for NewCommentsContent
 var (
 	commentsContentOnSubmission = &NewCommentsContent{
@@ -463,6 +533,7 @@ var (
 		Content: "This is a great submission!",
 		Link:    "http://example.com/submission/54321#comment-11111",
 		Type:    entries.EntryTypeSubmissionComment,
+		Rating:  fa.RatingMature,
 	}
 	commentsContentOnJournal = &NewCommentsContent{
 		ID:      22222,
@@ -632,6 +703,25 @@ func TestNewCommentsContent_ViewLink(t *testing.T) {
 
 	runTests(t, tests, func(tc TemplateContent) string {
 		return tc.ViewLink()
+	})
+}
+
+func TestNewCommentsContent_EntryRating(t *testing.T) {
+	tests := TestStructList[fa.Rating]{
+		{
+			name:     "returns mature rating for submission comment",
+			content:  commentsContentOnSubmission,
+			expected: fa.RatingMature,
+		},
+		{
+			name:     "returns general rating for empty",
+			content:  commentsContentEmpty,
+			expected: fa.RatingGeneral,
+		},
+	}
+
+	runTests(t, tests, func(tc TemplateContent) fa.Rating {
+		return tc.EntryRating()
 	})
 }
 

@@ -1,5 +1,5 @@
 {{define "header" -}}
-    {{.Rating.Symbol}} {{.Type.String}} {{toLower .EntryType.Name}} on FA from {{template "formattedUser" .}}!
+    {{.EntryRating.Symbol}} {{.Type.String}} {{toLower .EntryType.Name}} on FA from {{template "formattedUser" .}}!
 {{- end}}
 
 {{define "title" -}}

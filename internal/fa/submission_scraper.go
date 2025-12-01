@@ -23,7 +23,7 @@ type (
 		id             uint
 		title          string
 		from           *FurAffinityUser
-		rating         SubmissionRating
+		rating         Rating
 		submissionType SubmissionType
 		date           time.Time
 		thumbnail      *tools.ThumbnailUrl
@@ -49,32 +49,6 @@ type (
 	SubmissionDataMap map[uint]*SubmissionData
 )
 
-type SubmissionRating uint8
-
-func (sr SubmissionRating) String() string {
-	switch sr {
-	case SubmissionRatingGeneral:
-		return "General"
-	case SubmissionRatingMature:
-		return "Mature"
-	case SubmissionRatingAdult:
-		return "Adult"
-	}
-	panic("unreachable")
-}
-
-func (sr SubmissionRating) Symbol() string {
-	switch sr {
-	case SubmissionRatingGeneral:
-		return util.EmojiSquareWhite
-	case SubmissionRatingMature:
-		return util.EmojiSquareBlue
-	case SubmissionRatingAdult:
-		return util.EmojiSquareRed
-	}
-	panic("unreachable")
-}
-
 type SubmissionType uint8
 
 func (st SubmissionType) String() string {
@@ -88,12 +62,6 @@ func (st SubmissionType) String() string {
 	}
 	panic("unreachable")
 }
-
-const (
-	SubmissionRatingGeneral SubmissionRating = iota
-	SubmissionRatingMature
-	SubmissionRatingAdult
-)
 
 const (
 	SubmissionTypeUnknown SubmissionType = iota
@@ -111,7 +79,7 @@ func (se *SubmissionEntry) EntryType() entries.EntryType {
 	return entries.EntryTypeSubmission
 }
 
-func (se *SubmissionEntry) Rating() SubmissionRating {
+func (se *SubmissionEntry) Rating() Rating {
 	return se.rating
 }
 
@@ -410,11 +378,11 @@ func (fc *FurAffinityCollector) parseSubmission(entryElement *colly.HTMLElement,
 	}
 
 	if entryElement.DOM.HasClass("r-general") {
-		entry.rating = SubmissionRatingGeneral
+		entry.rating = RatingGeneral
 	} else if entryElement.DOM.HasClass("r-mature") {
-		entry.rating = SubmissionRatingMature
+		entry.rating = RatingMature
 	} else if entryElement.DOM.HasClass("r-adult") {
-		entry.rating = SubmissionRatingAdult
+		entry.rating = RatingAdult
 	}
 
 	entryElement.ForEach("figcaption a", func(i int, captionElement *colly.HTMLElement) {

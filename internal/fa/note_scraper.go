@@ -42,7 +42,10 @@ func (ne *NoteEntry) Title() string                { return ne.title }
 func (ne *NoteEntry) Date() time.Time              { return ne.date }
 func (ne *NoteEntry) Link() *url.URL               { return ne.link }
 func (ne *NoteEntry) From() *FurAffinityUser       { return ne.from }
-func (ne *NoteEntry) Content() EntryContent        { return ne.content }
+func (ne *NoteEntry) Rating() Rating {
+	return RatingGeneral
+}
+func (ne *NoteEntry) Content() EntryContent { return ne.content }
 func (ne *NoteEntry) SetContent(ec EntryContent) {
 	switch ec.(type) {
 	case *NoteContent:

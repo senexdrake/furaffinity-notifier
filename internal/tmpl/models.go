@@ -11,6 +11,7 @@ type (
 		EntryTitle() string
 		EntryContent() string
 		EntryType() entries.EntryType
+		EntryRating() fa.Rating
 		ViewLink() string
 	}
 	NewNotesContent struct {
@@ -19,6 +20,7 @@ type (
 		User    *fa.FurAffinityUser
 		Content string
 		Link    string
+		Rating  fa.Rating
 	}
 
 	NewCommentsContent struct {
@@ -28,6 +30,7 @@ type (
 		Content string
 		Link    string
 		Type    entries.EntryType
+		Rating  fa.Rating
 	}
 
 	NewJournalsContent struct {
@@ -36,6 +39,7 @@ type (
 		User    *fa.FurAffinityUser
 		Content string
 		Link    string
+		Rating  fa.Rating
 	}
 
 	NewSubmissionsContent struct {
@@ -46,7 +50,7 @@ type (
 		Description  string
 		ThumbnailUrl string
 		FullViewUrl  string
-		Rating       fa.SubmissionRating
+		Rating       fa.Rating
 		Type         fa.SubmissionType
 	}
 )
@@ -66,6 +70,9 @@ func (n *NewNotesContent) EntryType() entries.EntryType {
 func (n *NewNotesContent) ViewLink() string {
 	return n.Link
 }
+func (n *NewNotesContent) EntryRating() fa.Rating {
+	return n.Rating
+}
 
 func (n *NewJournalsContent) EntryID() uint {
 	return n.ID
@@ -81,6 +88,9 @@ func (n *NewJournalsContent) EntryType() entries.EntryType {
 }
 func (n *NewJournalsContent) ViewLink() string {
 	return n.Link
+}
+func (n *NewJournalsContent) EntryRating() fa.Rating {
+	return n.Rating
 }
 
 func (n *NewSubmissionsContent) EntryID() uint {
@@ -98,6 +108,9 @@ func (n *NewSubmissionsContent) EntryType() entries.EntryType {
 func (n *NewSubmissionsContent) ViewLink() string {
 	return n.Link
 }
+func (n *NewSubmissionsContent) EntryRating() fa.Rating {
+	return n.Rating
+}
 
 func (n *NewCommentsContent) EntryID() uint {
 	return n.ID
@@ -113,4 +126,7 @@ func (n *NewCommentsContent) EntryType() entries.EntryType {
 }
 func (n *NewCommentsContent) ViewLink() string {
 	return n.Link
+}
+func (n *NewCommentsContent) EntryRating() fa.Rating {
+	return n.Rating
 }

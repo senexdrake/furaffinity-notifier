@@ -25,6 +25,7 @@ type (
 		ID() uint
 		From() *FurAffinityUser
 		Title() string
+		Rating() Rating
 	}
 
 	Entry interface {
@@ -59,6 +60,38 @@ type (
 		ProfileUrl  *url.URL
 	}
 )
+
+type Rating uint8
+
+const (
+	RatingGeneral Rating = iota
+	RatingMature
+	RatingAdult
+)
+
+func (r Rating) String() string {
+	switch r {
+	case RatingGeneral:
+		return "General"
+	case RatingMature:
+		return "Mature"
+	case RatingAdult:
+		return "Adult"
+	}
+	panic("unreachable")
+}
+
+func (r Rating) Symbol() string {
+	switch r {
+	case RatingGeneral:
+		return util.EmojiSquareWhite
+	case RatingMature:
+		return util.EmojiSquareBlue
+	case RatingAdult:
+		return util.EmojiSquareRed
+	}
+	panic("unreachable")
+}
 
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"
 const faBaseUrl = "https://www.furaffinity.net"

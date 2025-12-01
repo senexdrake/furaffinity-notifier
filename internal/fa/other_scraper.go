@@ -3,6 +3,7 @@ package fa
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"slices"
 	"strconv"
@@ -39,6 +40,7 @@ type (
 		from    FurAffinityUser
 		date    time.Time
 		link    *url.URL
+		rating  Rating
 		content *JournalContent
 	}
 
@@ -48,10 +50,11 @@ type (
 	}
 
 	message struct {
-		title string
-		from  FurAffinityUser
-		date  time.Time
-		link  *url.URL
+		title  string
+		from   FurAffinityUser
+		date   time.Time
+		rating Rating
+		link   *url.URL
 	}
 )
 
@@ -64,7 +67,11 @@ func (ce *CommentEntry) Link() *url.URL               { return ce.link }
 func (ce *CommentEntry) ID() uint                     { return ce.id }
 func (ce *CommentEntry) Title() string                { return ce.title }
 func (ce *CommentEntry) From() *FurAffinityUser       { return &ce.from }
-func (ce *CommentEntry) Content() EntryContent        { return ce.content }
+func (ce *CommentEntry) Rating() Rating {
+	// TODO Respect the rating of the entry this comment was made on?
+	return RatingGeneral
+}
+func (ce *CommentEntry) Content() EntryContent { return ce.content }
 func (ce *CommentEntry) SetContent(ec EntryContent) {
 	switch ec.(type) {
 	case *CommentContent:
@@ -83,7 +90,10 @@ func (je *JournalEntry) Title() string                { return je.title }
 func (je *JournalEntry) From() *FurAffinityUser       { return &je.from }
 func (je *JournalEntry) EntryType() entries.EntryType { return entries.EntryTypeJournal }
 func (je *JournalEntry) Link() *url.URL               { return je.link }
-func (je *JournalEntry) Content() EntryContent        { return je.content }
+func (je *JournalEntry) Rating() Rating {
+	return je.rating
+}
+func (je *JournalEntry) Content() EntryContent { return je.content }
 func (je *JournalEntry) SetContent(ec EntryContent) {
 	switch ec.(type) {
 	case *JournalContent:
@@ -180,6 +190,7 @@ func (fc *FurAffinityCollector) getOtherEntriesUnfiltered(entryTypes ...entries.
 		handlerFunc := func(channel chan<- Entry, wg *sync.WaitGroup, element *colly.HTMLElement) Entry {
 			parsed, err := fc.parseJournalEntry(element)
 			if err != nil {
+				logging.Errorf("error parsing journal: %v", err)
 				return nil
 			}
 			return parsed
@@ -375,10 +386,11 @@ func (fc *FurAffinityCollector) parseJournalEntry(entryElement *colly.HTMLElemen
 	}
 
 	journal := JournalEntry{
-		date:  msg.date,
-		from:  msg.from,
-		link:  msg.link,
-		title: msg.title,
+		date:   msg.date,
+		from:   msg.from,
+		link:   msg.link,
+		title:  msg.title,
+		rating: msg.rating,
 	}
 
 	parseError := false
@@ -417,7 +429,7 @@ func journalIdFromLink(link *url.URL) (uint, error) {
 
 func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryElement *colly.HTMLElement) (*message, error) {
 	msg := message{}
-	parseError := false
+	var parseError error
 
 	indexAuthor := 0
 	indexTitle := 1
@@ -434,14 +446,13 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 			// This link is the user
 			link, err := FurAffinityUrl().Parse(e.Attr("href"))
 			if err != nil {
-				parseError = true
+				parseError = errors.New(fmt.Sprintf("error parsing user link: %s", err))
 				return true
 			}
 
 			username, err := tools.UsernameFromProfileLink(link)
 			if err != nil {
-				logging.Errorf("error parsing username from profile link: %s", err)
-				parseError = true
+				parseError = errors.New(fmt.Sprintf("error parsing username from profile link: %s", err))
 				return true
 			}
 
@@ -454,7 +465,7 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 			// This is the title
 			link, err := FurAffinityUrl().Parse(e.Attr("href"))
 			if err != nil {
-				parseError = true
+				parseError = errors.New("error parsing title link")
 				return true
 			}
 			msg.link = link
@@ -477,16 +488,34 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 		dateString := trimHtmlText(e.Text)
 		date, err := time.ParseInLocation(entryDateLayout, dateString, fc.location())
 		if err != nil {
-			parseError = true
+			parseError = errors.New(fmt.Sprintf("error parsing timestamp '%s': %s", dateString, err))
 			return
 		}
 		msg.date = date
 	})
 
-	if parseError {
-		return nil, errors.New("error parsing message")
+	if entryType == entries.EntryTypeJournal {
+		ratingFound := false
+		classRatingMap := map[Rating]string{
+			RatingGeneral: "c-contentRating--general",
+			RatingMature:  "c-contentRating--mature",
+			RatingAdult:   "c-contentRating--adult",
+		}
+
+		for _, rating := range slices.Sorted(maps.Keys(classRatingMap)) {
+			hasRating := entryElement.DOM.Find("span").HasClass(classRatingMap[rating])
+			if hasRating {
+				msg.rating = rating
+				ratingFound = true
+			}
+		}
+
+		if !ratingFound {
+			parseError = errors.New(fmt.Sprintf("error parsing journal rating for journal '%s'", msg.title))
+		}
 	}
-	return &msg, nil
+
+	return &msg, parseError
 }
 
 func (fc *FurAffinityCollector) location() *time.Location {
