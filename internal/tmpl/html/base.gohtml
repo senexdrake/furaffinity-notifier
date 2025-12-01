@@ -1,5 +1,5 @@
 {{block "header" . -}}
-{{.EntryType.Name}} on FA from <a href="{{.User.ProfileUrl}}">{{formatUser .User}}</a>!
+{{.EntryType.Name}} on FA from {{template "formattedUser" .}}!
 {{- end}}
 -----------------------------------------
 {{block "body" . -}}
@@ -16,4 +16,8 @@
 <b><a href="{{.ViewLink}}">View on FA</a></b>
 
 ({{.EntryType.Name}} ID: <code>{{.EntryID}}</code>)
+{{- end}}
+
+{{define "formattedUser" -}}
+    <a href="{{.User.ProfileUrl}}">{{formatUser .User}}</a>
 {{- end}}
