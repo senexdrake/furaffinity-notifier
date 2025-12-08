@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/go-telegram/bot v1.17.0
-	github.com/gocolly/colly/v2 v2.2.0
+	github.com/gocolly/colly/v2 v2.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.11.1
 	gorm.io/driver/sqlite v1.6.0
