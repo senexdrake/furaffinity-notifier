@@ -67,9 +67,8 @@ func (s Set[T]) Contains(t T) bool {
 }
 
 func (s Set[T]) Intersect(other Set[T]) Set[T] {
-	intersect := NewEmptySet[T]()
 	if len(s) == 0 || len(other) == 0 {
-		return intersect
+		return make(Set[T])
 	}
 
 	outer := s
@@ -81,6 +80,9 @@ func (s Set[T]) Intersect(other Set[T]) Set[T] {
 		inner = tmp
 	}
 
+	// The maximum size of the intersected Set is equal to the smaller Set, which will always be the outer one.
+	// So it makes sense to set the capacity hint to the length of the outer Set.
+	intersect := make(Set[T], len(outer))
 	for v := range outer {
 		if inner.Contains(v) {
 			intersect.Add(v)
