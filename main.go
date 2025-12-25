@@ -26,6 +26,7 @@ const enableOtherEntries = true
 const enableSubmissions = true
 const enableUserFilters = true
 const enableSubmissionsContent = true
+const enableBlockedTags = true
 
 var entryUserFilters = make(map[entries.EntryType][]string)
 var iterateSubmissionsBackwards = true
@@ -186,6 +187,7 @@ func updateForUser(user *db.User, doneCallback func()) {
 	c := fa.NewCollector(user)
 	c.LimitConcurrency = 4
 	c.IterateSubmissionsBackwards = iterateSubmissionsBackwards
+	c.RespectBlockedTags = enableBlockedTags
 
 	if enableLoginCheck {
 		// Check whether the user has valid credentials

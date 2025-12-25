@@ -15,5 +15,6 @@
 {{if .ThumbnailUrl}}<a href="{{.ThumbnailUrl}}">Open preview</a>{{end}}
 {{if .FullViewUrl}}<a href="{{.FullViewUrl}}">Open directly</a>{{end}}
 
+{{if .EntryBlocked}}<b>WARNING:</b> Content blocked because it contains tags on your blocklist!{{end}}
 ({{.EntryType.Name}} ID: <code>{{.ID}}</code>)
 {{- end}}

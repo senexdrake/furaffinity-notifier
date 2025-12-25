@@ -51,6 +51,7 @@ type (
 		OnlySinceRegistration       bool
 		OnlySinceTypeEnabled        bool
 		IterateSubmissionsBackwards bool
+		RespectBlockedTags          bool
 		User                        *db.User
 		userFilters                 map[entries.EntryType]util.Set[string]
 	}

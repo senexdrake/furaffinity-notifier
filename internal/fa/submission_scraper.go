@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
@@ -19,6 +20,11 @@ import (
 )
 
 type (
+	submissionFetchContext struct {
+		date           time.Time
+		submissionData SubmissionDataMap
+		blockedTags    util.Set[string]
+	}
 	SubmissionEntry struct {
 		id             uint
 		title          string
@@ -27,6 +33,8 @@ type (
 		submissionType SubmissionType
 		date           time.Time
 		thumbnail      *tools.ThumbnailUrl
+		tags           util.Set[string]
+		blockedReason  util.Set[string]
 		submissionData *SubmissionData
 		content        *SubmissionContent
 	}
@@ -149,6 +157,10 @@ func (se *SubmissionEntry) SetContent(content *SubmissionContent) {
 	se.content = content
 }
 
+func (se *SubmissionEntry) Tags() util.Set[string]           { return se.tags }
+func (se *SubmissionEntry) BlockedReasons() util.Set[string] { return se.blockedReason }
+func (se *SubmissionEntry) IsBlocked() bool                  { return len(se.BlockedReasons()) > 0 }
+
 func (fc *FurAffinityCollector) submissionCollector() *colly.Collector {
 	c := fc.configuredCollector(true)
 	return c
@@ -159,12 +171,15 @@ func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 
 	channel := make(chan *SubmissionEntry, fc.channelBufferSize())
 
-	c.OnHTML("#site-content", func(siteElement *colly.HTMLElement) {
+	c.OnHTML("body", func(bodyElement *colly.HTMLElement) {
 
-		rawSubmissionData := siteElement.DOM.Find("#js-submissionData").First().Text()
+		blockedTagsRaw := bodyElement.DOM.AttrOr("data-tag-blocklist", "")
+		blockedTags := tools.TagListToSet(blockedTagsRaw)
+
+		rawSubmissionData := bodyElement.DOM.Find("#js-submissionData").First().Text()
 		submissionData := parseSubmissionData(rawSubmissionData)
 
-		siteElement.ForEach("#messagecenter-submissions .notifications-by-date", func(i int, e *colly.HTMLElement) {
+		bodyElement.ForEach("#messagecenter-submissions .notifications-by-date", func(i int, e *colly.HTMLElement) {
 			date, err := submissionSectionDate(e)
 			if err != nil {
 				logging.Warnf("Error parsing submission section date: %s", err)
@@ -175,11 +190,16 @@ func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 				return
 			}
 
+			context := submissionFetchContext{
+				date:           date,
+				submissionData: submissionData,
+				blockedTags:    blockedTags,
+			}
+
 			fc.submissionHandlerWrapper(
 				channel,
 				e,
-				date,
-				submissionData,
+				&context,
 			)
 		})
 
@@ -204,8 +224,7 @@ func (fc *FurAffinityCollector) GetSubmissionEntries() <-chan *SubmissionEntry {
 func (fc *FurAffinityCollector) submissionHandlerWrapper(
 	channel chan<- *SubmissionEntry,
 	baseElement *colly.HTMLElement,
-	date time.Time,
-	submissionData SubmissionDataMap,
+	context *submissionFetchContext,
 ) {
 
 	wg := sync.WaitGroup{}
@@ -215,7 +234,7 @@ func (fc *FurAffinityCollector) submissionHandlerWrapper(
 		wg.Add(1)
 		defer wg.Done()
 
-		entry, err := fc.parseSubmission(el, date)
+		entry, err := fc.parseSubmission(el, context)
 		if err != nil || entry == nil {
 			logging.Warnf("Error parsing submission: %s", err)
 			return
@@ -225,7 +244,7 @@ func (fc *FurAffinityCollector) submissionHandlerWrapper(
 			return
 		}
 
-		data, found := submissionData[entry.ID()]
+		data, found := context.submissionData[entry.ID()]
 		if found {
 			entry.submissionData = data
 		}
@@ -365,9 +384,9 @@ func (fc *FurAffinityCollector) isSubmissionNew(id uint) bool {
 	return fc.isEntryNew(entries.EntryTypeSubmission, id)
 }
 
-func (fc *FurAffinityCollector) parseSubmission(entryElement *colly.HTMLElement, date time.Time) (*SubmissionEntry, error) {
+func (fc *FurAffinityCollector) parseSubmission(entryElement *colly.HTMLElement, context *submissionFetchContext) (*SubmissionEntry, error) {
 	entry := SubmissionEntry{
-		date: date,
+		date: context.date,
 		from: userFromSubmissionPageElement(entryElement),
 	}
 
@@ -416,7 +435,18 @@ func (fc *FurAffinityCollector) parseSubmission(entryElement *colly.HTMLElement,
 		return nil, errors.New("submission with empty ID is invalid")
 	}
 
-	entry.thumbnail = submissionThumbnail(entryElement)
+	imgElement := entryElement.DOM.Find("img").First()
+	entry.thumbnail = submissionThumbnail(imgElement)
+
+	rawTags := imgElement.AttrOr("data-tags", "")
+	entry.tags = tools.TagListToSet(rawTags)
+
+	if fc.RespectBlockedTags {
+		blockedReason := entry.tags.Intersect(context.blockedTags)
+		if len(blockedReason) > 0 {
+			entry.blockedReason = blockedReason
+		}
+	}
 
 	return &entry, nil
 }
@@ -444,8 +474,7 @@ func submissionIdFromLink(link *url.URL) uint {
 	return 0
 }
 
-func submissionThumbnail(el *colly.HTMLElement) *tools.ThumbnailUrl {
-	imgElement := el.DOM.Find("img")
+func submissionThumbnail(imgElement *goquery.Selection) *tools.ThumbnailUrl {
 	if imgElement != nil {
 		src, found := imgElement.Attr("src")
 		if !found || src == "" {

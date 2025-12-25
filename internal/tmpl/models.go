@@ -12,6 +12,7 @@ type (
 		EntryContent() string
 		EntryType() entries.EntryType
 		EntryRating() fa.Rating
+		EntryBlocked() bool
 		ViewLink() string
 	}
 	NewNotesContent struct {
@@ -52,6 +53,7 @@ type (
 		FullViewUrl  string
 		Rating       fa.Rating
 		Type         fa.SubmissionType
+		Blocked      bool
 	}
 )
 
@@ -73,6 +75,9 @@ func (n *NewNotesContent) ViewLink() string {
 func (n *NewNotesContent) EntryRating() fa.Rating {
 	return n.Rating
 }
+func (n *NewNotesContent) EntryBlocked() bool {
+	return false
+}
 
 func (n *NewJournalsContent) EntryID() uint {
 	return n.ID
@@ -91,6 +96,9 @@ func (n *NewJournalsContent) ViewLink() string {
 }
 func (n *NewJournalsContent) EntryRating() fa.Rating {
 	return n.Rating
+}
+func (n *NewJournalsContent) EntryBlocked() bool {
+	return false
 }
 
 func (n *NewSubmissionsContent) EntryID() uint {
@@ -111,6 +119,9 @@ func (n *NewSubmissionsContent) ViewLink() string {
 func (n *NewSubmissionsContent) EntryRating() fa.Rating {
 	return n.Rating
 }
+func (n *NewSubmissionsContent) EntryBlocked() bool {
+	return n.Blocked
+}
 
 func (n *NewCommentsContent) EntryID() uint {
 	return n.ID
@@ -129,4 +140,7 @@ func (n *NewCommentsContent) ViewLink() string {
 }
 func (n *NewCommentsContent) EntryRating() fa.Rating {
 	return n.Rating
+}
+func (n *NewCommentsContent) EntryBlocked() bool {
+	return false
 }

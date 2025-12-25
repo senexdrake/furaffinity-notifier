@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"html"
+	"iter"
 	"os"
 	"slices"
 	"strconv"
@@ -27,6 +28,17 @@ const (
 
 var truthyValues = []string{"1", "true", "yes", "on", "enable"}
 
+func NewEmptySet[T comparable]() Set[T] {
+	set := make(Set[T])
+	return set
+}
+
+func NewSetSeq[T comparable](seq iter.Seq[T]) Set[T] {
+	set := make(Set[T])
+	set.AddAllSeq(seq)
+	return set
+}
+
 func NewSet[T comparable](elements []T) Set[T] {
 	set := make(Set[T], len(elements))
 	set.AddAll(elements)
@@ -43,9 +55,50 @@ func (s Set[T]) AddAll(t []T) {
 	}
 }
 
+func (s Set[T]) AddAllSeq(t iter.Seq[T]) {
+	for v := range t {
+		s.Add(v)
+	}
+}
+
 func (s Set[T]) Contains(t T) bool {
 	_, ok := (s)[t]
 	return ok
+}
+
+func (s Set[T]) Intersect(other Set[T]) Set[T] {
+	intersect := NewEmptySet[T]()
+	if len(s) == 0 || len(other) == 0 {
+		return intersect
+	}
+
+	outer := s
+	inner := other
+	// The outer set should be the smaller one, as the Contains() method is O(1)
+	if len(outer) > len(inner) {
+		tmp := outer
+		outer = inner
+		inner = tmp
+	}
+
+	for v := range outer {
+		if inner.Contains(v) {
+			intersect.Add(v)
+		}
+	}
+	return intersect
+}
+
+func (s Set[T]) Len() int {
+	return len(s)
+}
+
+func (s Set[T]) IsEmpty() bool {
+	return len(s) == 0
+}
+
+func (s Set[T]) Slice() []T {
+	return Keys(s)
 }
 
 func ReverseMap[M ~map[K]V, K comparable, V comparable](m M) map[V]K {
@@ -62,6 +115,17 @@ func Map[T, U any](ts []T, f func(T) U) []U {
 		us[i] = f(ts[i])
 	}
 	return us
+}
+
+func MapSeq[T, U any](iterator iter.Seq[T], f func(T) U) iter.Seq[U] {
+	return func(yield func(U) bool) {
+		for v := range iterator {
+			mapped := f(v)
+			if !yield(mapped) {
+				return
+			}
+		}
+	}
 }
 
 func Filter[T any](ss []T, test func(T) bool) (ret []T) {

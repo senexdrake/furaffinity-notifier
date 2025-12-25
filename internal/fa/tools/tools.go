@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/senexdrake/furaffinity-notifier/internal/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 type ThumbnailUrl struct {
@@ -78,4 +79,10 @@ func UsernameFromProfileLink(link *url.URL) (string, error) {
 		return username, nil
 	}
 	return "", errors.New(fmt.Sprintf("no username found in profile link '%s'", link))
+}
+
+func TagListToSet(rawTagList string) util.Set[string] {
+	return util.NewSetSeq(util.MapSeq(strings.SplitSeq(rawTagList, " "), func(s string) string {
+		return strings.TrimSpace(s)
+	}))
 }

@@ -255,6 +255,7 @@ func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 		Type:         submission.Type(),
 		ThumbnailUrl: thumbnailUrlString,
 		FullViewUrl:  fullViewUrlString,
+		Blocked:      submission.IsBlocked(),
 	})
 
 	if err != nil {
@@ -263,6 +264,9 @@ func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 	}
 
 	previewOptions := linkPreviewWithThumbnailOrFullView(fullViewUrl, thumbnailUrl)
+	if submission.IsBlocked() {
+		previewOptions.SetDisabled(true)
+	}
 
 	_, err = botInstance.SendMessage(botContext, &bot.SendMessageParams{
 		ChatID:             user.TelegramChatId,
