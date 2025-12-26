@@ -3,10 +3,10 @@ package telegram
 import (
 	"net/url"
 
+	"github.com/fanonwue/goutils"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
-	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 type linkPreviewOptionsHelper struct {
@@ -72,7 +72,7 @@ func (lpoh *linkPreviewOptionsHelper) Get() *models.LinkPreviewOptions {
 }
 
 func truncateMessage(message string) string {
-	return util.TruncateStringWholeWords(message, conf.MessageContentLength)
+	return goutils.TruncateStringWholeWords(message, conf.MessageContentLength)
 }
 
 func linkPreviewWithThumbnailOrFullView(fullView *url.URL, thumbnail *tools.ThumbnailUrl) *linkPreviewOptionsHelper {

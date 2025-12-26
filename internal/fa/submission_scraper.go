@@ -12,10 +12,12 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/fanonwue/goutils"
+	"github.com/fanonwue/goutils/dsext"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -23,7 +25,7 @@ type (
 	submissionFetchContext struct {
 		date           time.Time
 		submissionData SubmissionDataMap
-		blockedTags    util.Set[string]
+		blockedTags    dsext.Set[string]
 	}
 	SubmissionEntry struct {
 		id             uint
@@ -33,8 +35,8 @@ type (
 		submissionType SubmissionType
 		date           time.Time
 		thumbnail      *tools.ThumbnailUrl
-		tags           util.Set[string]
-		blockedReason  util.Set[string]
+		tags           dsext.Set[string]
+		blockedReason  dsext.Set[string]
 		submissionData *SubmissionData
 		content        *SubmissionContent
 	}
@@ -157,9 +159,9 @@ func (se *SubmissionEntry) SetContent(content *SubmissionContent) {
 	se.content = content
 }
 
-func (se *SubmissionEntry) Tags() util.Set[string]           { return se.tags }
-func (se *SubmissionEntry) BlockedReasons() util.Set[string] { return se.blockedReason }
-func (se *SubmissionEntry) IsBlocked() bool                  { return len(se.BlockedReasons()) > 0 }
+func (se *SubmissionEntry) Tags() dsext.Set[string]           { return se.tags }
+func (se *SubmissionEntry) BlockedReasons() dsext.Set[string] { return se.blockedReason }
+func (se *SubmissionEntry) IsBlocked() bool                   { return len(se.BlockedReasons()) > 0 }
 
 func (fc *FurAffinityCollector) submissionCollector() *colly.Collector {
 	c := fc.configuredCollector(true)
@@ -345,7 +347,7 @@ func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *Su
 		}
 
 		// Try using the data-time attribute first
-		timeFromAttr, err := util.EpochStringToTime(
+		timeFromAttr, err := goutils.EpochStringToTime(
 			e.ChildAttr(".submission-id-container span.popup_date", "data-time"))
 		if err != nil {
 			logging.Warnf("Error parsing date for submission content (%d): %s", entry.ID(), err)
@@ -452,7 +454,7 @@ func (fc *FurAffinityCollector) parseSubmission(entryElement *colly.HTMLElement,
 }
 
 func submissionSectionDate(el *colly.HTMLElement) (time.Time, error) {
-	timeFromAttr, err := util.EpochStringToTime(el.Attr("data-date"))
+	timeFromAttr, err := goutils.EpochStringToTime(el.Attr("data-date"))
 	if err != nil {
 		return time.Time{}, err
 	}

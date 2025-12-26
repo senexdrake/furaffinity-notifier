@@ -4,7 +4,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 

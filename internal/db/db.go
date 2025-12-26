@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/fanonwue/goutils/dsext"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -72,8 +73,8 @@ func (u *User) EnabledEntryTypes() []entries.EntryType {
 	return entryTypes
 }
 
-func (u *User) EnabledEntryTypesSet() util.Set[entries.EntryType] {
-	return util.NewSet(u.EnabledEntryTypes())
+func (u *User) EnabledEntryTypesSet() dsext.Set[entries.EntryType] {
+	return dsext.NewSetSlice(u.EnabledEntryTypes())
 }
 
 func (u *User) GetLocation() (*time.Location, error) {

@@ -10,9 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fanonwue/goutils"
+	"github.com/fanonwue/goutils/dsext"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -76,7 +78,7 @@ func (fc *FurAffinityCollector) notesCookies() []*http.Cookie {
 	cookieMap := maps.Clone(fc.cookieMap())
 	cookieMap["folder"] = &folderCookie
 
-	return util.Values(cookieMap)
+	return dsext.Values(cookieMap)
 }
 
 func (fc *FurAffinityCollector) noteCollector() *colly.Collector {
@@ -201,7 +203,7 @@ func (fc *FurAffinityCollector) GetNoteContents(notes []uint, markUnread bool) m
 	}
 
 	if markUnread {
-		fc.MarkUnread(util.Keys(contentMap)...)
+		fc.MarkUnread(dsext.Keys(contentMap)...)
 	}
 
 	return contentMap
@@ -294,7 +296,7 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 
 		link, _ := FurAffinityUrl().Parse(e.Attr("href"))
 		summary.link = link
-		pathParts := util.Filter(strings.Split(link.Path, "/"), func(s string) bool {
+		pathParts := dsext.Filter(strings.Split(link.Path, "/"), func(s string) bool {
 			return s != ""
 		})
 		id, err := strconv.ParseUint(pathParts[len(pathParts)-1], 10, 32)
@@ -315,7 +317,7 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 
 	noteElement.ForEach(".note-list-senddate", func(i int, e *colly.HTMLElement) {
 		// Try using the data-time attribute first
-		timeFromAttr, err := util.EpochStringToTime(e.ChildAttr("span", "data-time"))
+		timeFromAttr, err := goutils.EpochStringToTime(e.ChildAttr("span", "data-time"))
 		if err == nil {
 			summary.date = timeFromAttr
 			return

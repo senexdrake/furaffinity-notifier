@@ -11,10 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fanonwue/goutils"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -479,7 +480,7 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 
 	entryElement.ForEach("span.popup_date", func(i int, e *colly.HTMLElement) {
 		// Try using the data-time attribute first
-		timeFromAttr, err := util.EpochStringToTime(e.Attr("data-time"))
+		timeFromAttr, err := goutils.EpochStringToTime(e.Attr("data-time"))
 		if err == nil {
 			msg.date = timeFromAttr
 			return

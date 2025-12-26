@@ -9,11 +9,12 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/fanonwue/goutils/dsext"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -53,7 +54,7 @@ type (
 		IterateSubmissionsBackwards bool
 		RespectBlockedTags          bool
 		User                        *db.User
-		userFilters                 map[entries.EntryType]util.Set[string]
+		userFilters                 map[entries.EntryType]dsext.Set[string]
 	}
 	FurAffinityUser struct {
 		DisplayName string
@@ -149,7 +150,7 @@ func (fc *FurAffinityCollector) cookieMap() map[string]*http.Cookie {
 }
 
 func (fc *FurAffinityCollector) cookies() []*http.Cookie {
-	return util.Values(fc.cookieMap())
+	return dsext.Values(fc.cookieMap())
 }
 
 func (fc *FurAffinityCollector) registrationDate() time.Time {
@@ -186,7 +187,7 @@ func (fc *FurAffinityCollector) SetUserFilter(entryType entries.EntryType, users
 		delete(fc.userFilters, entryType)
 		return
 	}
-	fc.userFilters[entryType] = util.NewSet(util.Map(users, tools.NormalizeUsername))
+	fc.userFilters[entryType] = dsext.NewSetSlice(dsext.Map(users, tools.NormalizeUsername))
 }
 
 func (fc *FurAffinityCollector) UserID() uint {
@@ -245,7 +246,7 @@ func NewCollector(user *db.User) *FurAffinityCollector {
 		OnlySinceRegistration:       true,
 		OnlySinceTypeEnabled:        true,
 		IterateSubmissionsBackwards: false,
-		userFilters:                 make(map[entries.EntryType]util.Set[string]),
+		userFilters:                 make(map[entries.EntryType]dsext.Set[string]),
 	}
 }
 

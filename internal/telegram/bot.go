@@ -8,15 +8,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fanonwue/goutils/dsext"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/tmpl"
-	"github.com/senexdrake/furaffinity-notifier/internal/util"
 	"gorm.io/gorm"
 )
 
@@ -103,7 +103,7 @@ func registerHandlers(commands []*CommandHandler, tgBot *bot.Bot, ctx context.Co
 
 func registerCommands(commands []*CommandHandler, tgBot *bot.Bot, ctx context.Context) {
 	tgBot.SetMyCommands(ctx, &bot.SetMyCommandsParams{
-		Commands: util.Map(commands, func(ch *CommandHandler) models.BotCommand {
+		Commands: dsext.Map(commands, func(ch *CommandHandler) models.BotCommand {
 			return models.BotCommand{Command: ch.Pattern, Description: ch.Description}
 		}),
 	})

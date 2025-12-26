@@ -3,15 +3,15 @@ package telegram
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
+	"github.com/fanonwue/goutils"
+	"github.com/fanonwue/goutils/dsext"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
-	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 func createPrivacyPolicyCommand() *CommandHandler {
@@ -69,7 +69,7 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	tx := db.Db().Begin()
 	user, _ := userFromChatId(update.Message.Chat.ID, tx)
 
-	cookiesRaw := util.Map(strings.Split(update.Message.Text, ","), func(s string) string {
+	cookiesRaw := dsext.Map(strings.Split(update.Message.Text, ","), func(s string) string {
 		return strings.TrimSpace(s)
 	})
 
@@ -185,7 +185,7 @@ func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return "all"
 	}
 
-	messageParts := util.Filter(strings.Split(update.Message.Text, " "), func(s string) bool {
+	messageParts := dsext.Filter(strings.Split(update.Message.Text, " "), func(s string) bool {
 		return s != ""
 	})
 
@@ -201,7 +201,7 @@ func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	user.UnreadNotesOnly = slices.Contains(util.TruthyValues(), strings.ToLower(messageParts[1]))
+	user.UnreadNotesOnly = goutils.IsTruthy(messageParts[1])
 	db.Db().Save(user)
 
 	b.SendMessage(ctx, &bot.SendMessageParams{

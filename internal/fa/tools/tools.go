@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
-	"github.com/senexdrake/furaffinity-notifier/internal/util"
+	"github.com/fanonwue/goutils/dsext"
+	"github.com/fanonwue/goutils/logging"
 )
 
 type ThumbnailUrl struct {
@@ -81,8 +81,8 @@ func UsernameFromProfileLink(link *url.URL) (string, error) {
 	return "", errors.New(fmt.Sprintf("no username found in profile link '%s'", link))
 }
 
-func TagListToSet(rawTagList string) util.Set[string] {
-	return util.NewSetSeq(util.MapSeq(strings.SplitSeq(rawTagList, " "), func(s string) string {
+func TagListToSet(rawTagList string) dsext.Set[string] {
+	return dsext.NewSetSeq(dsext.MapSeq(strings.SplitSeq(rawTagList, " "), func(s string) string {
 		return strings.TrimSpace(s)
 	}))
 }

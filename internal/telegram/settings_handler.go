@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/fanonwue/goutils/dsext"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
@@ -61,8 +62,8 @@ func dataToEntryType(data string) entries.EntryType {
 }
 
 func settingsKeyboard() *models.InlineKeyboardMarkup {
-	buttons := util.Map(settingsKeyboardLayout, func(row []entries.EntryType) []models.InlineKeyboardButton {
-		return util.Map(row, func(entryType entries.EntryType) models.InlineKeyboardButton {
+	buttons := dsext.Map(settingsKeyboardLayout, func(row []entries.EntryType) []models.InlineKeyboardButton {
+		return dsext.Map(row, func(entryType entries.EntryType) models.InlineKeyboardButton {
 			return models.InlineKeyboardButton{
 				Text:         entryTypeToText(entryType),
 				CallbackData: entryTypeToData(entryType),
@@ -146,7 +147,7 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 		return
 	}
 
-	enabledEntryTypes := util.NewSet(user.EnabledEntryTypes())
+	enabledEntryTypes := dsext.NewSetSlice(user.EnabledEntryTypes())
 	typeEnabled := enabledEntryTypes.Contains(entryType)
 	// Toggle status
 	typeEnabled = !typeEnabled

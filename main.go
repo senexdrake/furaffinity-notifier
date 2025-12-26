@@ -11,12 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fanonwue/goutils"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/joho/godotenv"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
-	"github.com/senexdrake/furaffinity-notifier/internal/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
@@ -244,7 +245,7 @@ func entryHandlerWrapper[T fa.BaseEntry](user *db.User, entryChannel <-chan T, e
 		logging.Errorf("user is nil, skipping update")
 		return
 	}
-	defer util.PanicHandler(func(err any) {
+	defer goutils.PanicHandler(func(err any) {
 		logging.Errorf("Recovered from panic while running update for user %d: %s", user.ID, err)
 	})
 
@@ -263,7 +264,7 @@ func submissionsChannel(c *fa.FurAffinityCollector) <-chan *fa.SubmissionEntry {
 }
 
 func envBoolLog(key string, defaultValue bool) bool {
-	ret, err := util.EnvBool(key, defaultValue)
+	ret, err := util.EnvHelper().Bool(key, defaultValue)
 	if err != nil {
 		logging.Errorf("Error parsing bool for key '%s': %s", key, err)
 		return defaultValue
