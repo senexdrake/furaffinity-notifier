@@ -147,7 +147,7 @@ func userFiltersForEntryType(entryType entries.EntryType) dsext.Set[string] {
 
 	filterRaw := os.Getenv(util.PrefixEnvVar(envVar))
 	users := dsext.NewSet[string]()
-	for _, userRaw := range strings.Split(filterRaw, ",") {
+	for _, userRaw := range util.SplitAny(filterRaw, ", ") {
 		user := tools.NormalizeUsername(userRaw)
 		if user != "" {
 			users.Add(user)

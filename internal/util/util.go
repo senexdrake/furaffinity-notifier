@@ -86,3 +86,10 @@ func BackwardsChannelWithCapacity[T any](channel <-chan T, cap uint) <-chan T {
 
 	return reversedChannel
 }
+
+func SplitAny(s string, seps string) []string {
+	splitter := func(r rune) bool {
+		return strings.ContainsRune(seps, r)
+	}
+	return strings.FieldsFunc(s, splitter)
+}
