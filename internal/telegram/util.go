@@ -6,8 +6,8 @@ import (
 	"github.com/fanonwue/goutils"
 	"github.com/fanonwue/goutils/logging"
 	"github.com/go-telegram/bot/models"
+	"github.com/senexdrake/furaffinity-notifier/internal/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
-	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
 )
 
 type linkPreviewOptionsHelper struct {

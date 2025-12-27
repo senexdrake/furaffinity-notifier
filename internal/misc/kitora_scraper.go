@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
+	"github.com/senexdrake/furaffinity-notifier/internal/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 

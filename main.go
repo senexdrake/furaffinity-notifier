@@ -6,7 +6,6 @@ import (
 	"os/signal"
 	"slices"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -14,28 +13,14 @@ import (
 	"github.com/fanonwue/goutils"
 	"github.com/fanonwue/goutils/logging"
 	"github.com/joho/godotenv"
+	"github.com/senexdrake/furaffinity-notifier/internal/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
-	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/misc"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
-	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
-
-const minimumUpdateInterval = 30 * time.Second
-const enableOtherEntries = true
-const enableSubmissions = true
-const enableUserFilters = true
-const enableSubmissionsContent = true
-const enableBlockedTags = true
-const enableMiscJobs = true
-
-var entryUserFilters = make(map[entries.EntryType][]string)
-var iterateSubmissionsBackwards = true
-var enableLoginCheck = true
-var enableKitoraRequestFormCheck = false
 
 func init() {
 	dotenvErr := godotenv.Load()
@@ -52,31 +37,8 @@ func init() {
 
 	conf.Setup()
 
-	if enableUserFilters {
-		for _, entryType := range entries.EntryTypes() {
-			filter := userFiltersForEntryType(entryType)
-			if filter != nil {
-				entryUserFilters[entryType] = filter
-				logging.Infof(
-					"User filter for type '%s' enabled. Configured usernames: [%s]",
-					entryType.Name(),
-					strings.Join(filter, ", "),
-				)
-			}
-		}
-	}
-
-	if enableSubmissions {
-		iterateSubmissionsBackwards = envBoolLog("SUBMISSIONS_BACKWARDS", iterateSubmissionsBackwards)
-	}
-
-	enableLoginCheck = envBoolLog("ENABLE_LOGIN_CHECK", enableLoginCheck)
-
-	if enableMiscJobs {
-		enableKitoraRequestFormCheck = envBoolLog("ENABLE_KITORA_FORM_CHECK", enableKitoraRequestFormCheck)
-		if enableKitoraRequestFormCheck {
-			logging.Infof("Kitora request form check enabled. User %d will be notified about future availability.", misc.KitoraNotificationTarget())
-		}
+	if conf.EnableKitoraRequestFormCheck() {
+		logging.Infof("Kitora request form check enabled. User %d will be notified about future availability.", misc.KitoraNotificationTarget())
 	}
 }
 
@@ -105,9 +67,9 @@ func updateInterval() time.Duration {
 	if err == nil {
 		interval = time.Duration(updateIntervalRaw) * time.Second
 	}
-	if interval < minimumUpdateInterval {
-		logging.Warnf("UPDATE_INTERVAL set too low, setting it to the minimum interval of %.0f seconds", minimumUpdateInterval.Seconds())
-		interval = minimumUpdateInterval
+	if interval < conf.MinimumUpdateInterval {
+		logging.Warnf("UPDATE_INTERVAL set too low, setting it to the minimum interval of %.0f seconds", conf.MinimumUpdateInterval.Seconds())
+		interval = conf.MinimumUpdateInterval
 	}
 	return interval
 }
@@ -138,7 +100,7 @@ func UpdateJob() {
 
 	wg := sync.WaitGroup{}
 
-	if enableMiscJobs {
+	if conf.EnableMiscJobs {
 		runMisc(&wg)
 	}
 
@@ -152,42 +114,8 @@ func UpdateJob() {
 	wg.Wait()
 }
 
-func userFiltersForEntryType(entryType entries.EntryType) []string {
-	envVar := ""
-	switch entryType {
-	case entries.EntryTypeSubmission:
-		envVar = "SUBMISSIONS_USER_FILTER"
-	case entries.EntryTypeJournal:
-		envVar = "JOURNALS_USER_FILTER"
-	case entries.EntryTypeNote:
-		envVar = "NOTES_USER_FILTER"
-	case entries.EntryTypeJournalComment, entries.EntryTypeSubmissionComment:
-		envVar = "COMMENTS_USER_FILTER"
-	case entries.EntryTypeInvalid:
-	default:
-		panic("unreachable")
-	}
-
-	if envVar == "" {
-		return nil
-	}
-
-	filterRaw := os.Getenv(util.PrefixEnvVar(envVar))
-	users := make([]string, 0)
-	for _, userRaw := range strings.Split(filterRaw, ",") {
-		user := tools.NormalizeUsername(userRaw)
-		if user != "" {
-			users = append(users, user)
-		}
-	}
-	if len(users) == 0 {
-		return nil
-	}
-	return users
-}
-
 func applyUserFilters(c *fa.FurAffinityCollector) {
-	for entryType, users := range entryUserFilters {
+	for entryType, users := range conf.EntryUserFilters() {
 		if users != nil && len(users) > 0 {
 			c.SetUserFilter(entryType, users)
 		}
@@ -202,10 +130,10 @@ func updateForUser(user *db.User) {
 	logging.Debugf("Running update for user %d", user.ID)
 	c := fa.NewCollector(user)
 	c.LimitConcurrency = 4
-	c.IterateSubmissionsBackwards = iterateSubmissionsBackwards
-	c.RespectBlockedTags = enableBlockedTags
+	c.IterateSubmissionsBackwards = conf.IterateSubmissionsBackwards()
+	c.RespectBlockedTags = conf.EnableBlockedTags
 
-	if enableLoginCheck {
+	if conf.EnableLoginCheck() {
 		// Check whether the user has valid credentials
 		loggedIn, err := c.IsLoggedIn()
 		if err != nil {
@@ -226,7 +154,7 @@ func updateForUser(user *db.User) {
 	}
 
 	// set filters
-	if enableUserFilters {
+	if conf.EnableUserFilters {
 		applyUserFilters(c)
 	}
 
@@ -239,14 +167,14 @@ func updateForUser(user *db.User) {
 		})
 	}
 
-	if enableSubmissions && slices.Contains(entryTypes, entries.EntryTypeSubmission) {
+	if conf.EnableSubmissions && slices.Contains(entryTypes, entries.EntryTypeSubmission) {
 		channel := submissionsChannel(c)
 		entryHandlerWrapper(user, channel, func(submission *fa.SubmissionEntry) {
 			telegram.HandleNewSubmission(submission, user)
 		})
 	}
 
-	if enableOtherEntries {
+	if conf.EnableOtherEntries {
 		channel := c.GetNewOtherEntriesWithContent(entryTypes...)
 		entryHandlerWrapper(user, channel, func(entry fa.Entry) {
 			telegram.HandleNewEntry(entry, user)
@@ -272,23 +200,14 @@ func entryHandlerWrapper[T fa.BaseEntry](user *db.User, entryChannel <-chan T, e
 }
 
 func submissionsChannel(c *fa.FurAffinityCollector) <-chan *fa.SubmissionEntry {
-	if enableSubmissionsContent {
+	if conf.EnableSubmissionsContent {
 		return c.GetNewSubmissionEntriesWithContent()
 	}
 	return c.GetNewSubmissionEntries()
 }
 
-func envBoolLog(key string, defaultValue bool) bool {
-	ret, err := util.EnvHelper().Bool(key, defaultValue)
-	if err != nil {
-		logging.Errorf("Error parsing bool for key '%s': %s", key, err)
-		return defaultValue
-	}
-	return ret
-}
-
 func runMisc(wg *sync.WaitGroup) {
-	if enableKitoraRequestFormCheck {
+	if conf.EnableKitoraRequestFormCheck() {
 		wg.Go(func() {
 			checkKitoraCommissionStatus(misc.KitoraNotificationTarget())
 		})
