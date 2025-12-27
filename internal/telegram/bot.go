@@ -359,6 +359,16 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 	})
 }
 
+func SendMessage(chatId int64, message string) (*models.Message, error) {
+	msg, err := botInstance.SendMessage(botContext, &bot.SendMessageParams{
+		ChatID:    chatId,
+		ParseMode: models.ParseModeHTML,
+		Text:      message,
+	})
+
+	return msg, err
+}
+
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update.Message == nil {
 		return

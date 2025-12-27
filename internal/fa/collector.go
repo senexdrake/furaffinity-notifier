@@ -95,12 +95,12 @@ func (r Rating) Symbol() string {
 	panic("unreachable")
 }
 
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0"
+const userAgent = util.HttpDefaultUserAgent
 const faBaseUrl = "https://www.furaffinity.net"
 const faTimezone = "America/Los_Angeles"
 const faNoteSeparator = "—————————"
 const faDefaultUsername = "UNKNOWN"
-const requestTimeout = 30 * time.Second
+const requestTimeout = util.HttpDefaultRequestTimeout
 
 var (
 	furaffinityBaseUrl, _         = url.Parse(faBaseUrl)

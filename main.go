@@ -18,6 +18,7 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/fa"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
+	"github.com/senexdrake/furaffinity-notifier/internal/misc"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
@@ -32,6 +33,7 @@ const enableBlockedTags = true
 var entryUserFilters = make(map[entries.EntryType][]string)
 var iterateSubmissionsBackwards = true
 var enableLoginCheck = true
+var enableKitoraRequestFormCheck = false
 
 func init() {
 	dotenvErr := godotenv.Load()
@@ -65,6 +67,7 @@ func init() {
 	}
 
 	enableLoginCheck = envBoolLog("ENABLE_LOGIN_CHECK", enableLoginCheck)
+	enableKitoraRequestFormCheck = envBoolLog("ENABLE_KITORA_FORM_CHECK", enableKitoraRequestFormCheck)
 }
 
 func main() {
@@ -79,6 +82,10 @@ func main() {
 
 	logging.Infof("Starting Bot...")
 	_ = telegram.StartBot(appContext)
+
+	if enableKitoraRequestFormCheck {
+		logging.Infof("Kitora request form check enabled. User %d will be notified about future availability.", misc.KitoraNotificationTarget())
+	}
 
 	go StartBackgroundUpdates(appContext, updateInterval())
 
@@ -132,6 +139,8 @@ func UpdateJob() {
 			wg.Done()
 		})
 	}
+
+	runMisc(&wg)
 
 	wg.Wait()
 }
@@ -270,4 +279,40 @@ func envBoolLog(key string, defaultValue bool) bool {
 		return defaultValue
 	}
 	return ret
+}
+
+func runMisc(wg *sync.WaitGroup) {
+	if enableKitoraRequestFormCheck {
+		wg.Go(func() {
+			time.Sleep(2 * time.Second)
+			checkKitoraCommissionStatus(misc.KitoraNotificationTarget())
+		})
+	}
+}
+
+func checkKitoraCommissionStatus(notificationTarget int64) {
+	if misc.KitoraHasNotified() {
+		return
+	}
+
+	open, err := misc.KitoraCheckRequestFormOpen()
+	if err != nil {
+		logging.Errorf("error checking Kitora request form: %v", err)
+		misc.KitoraSetNotified(true)
+		return
+	}
+
+	if !open {
+		return
+	}
+
+	logging.Infof("Notifiying user %d that the Kitora request form is open", notificationTarget)
+
+	_, err = telegram.SendMessage(notificationTarget, misc.KitoraMessageContent())
+	if err != nil {
+		logging.Errorf("error sending Kitora request form notification: %v", err)
+		return
+	}
+
+	misc.KitoraSetNotified(true)
 }
