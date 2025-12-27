@@ -30,6 +30,7 @@ const enableSubmissions = true
 const enableUserFilters = true
 const enableSubmissionsContent = true
 const enableBlockedTags = true
+const enableMiscJobs = true
 
 var entryUserFilters = make(map[entries.EntryType][]string)
 var iterateSubmissionsBackwards = true
@@ -70,9 +71,12 @@ func init() {
 	}
 
 	enableLoginCheck = envBoolLog("ENABLE_LOGIN_CHECK", enableLoginCheck)
-	enableKitoraRequestFormCheck = envBoolLog("ENABLE_KITORA_FORM_CHECK", enableKitoraRequestFormCheck)
-	if enableKitoraRequestFormCheck {
-		logging.Infof("Kitora request form check enabled. User %d will be notified about future availability.", misc.KitoraNotificationTarget())
+
+	if enableMiscJobs {
+		enableKitoraRequestFormCheck = envBoolLog("ENABLE_KITORA_FORM_CHECK", enableKitoraRequestFormCheck)
+		if enableKitoraRequestFormCheck {
+			logging.Infof("Kitora request form check enabled. User %d will be notified about future availability.", misc.KitoraNotificationTarget())
+		}
 	}
 }
 
@@ -110,6 +114,7 @@ func updateInterval() time.Duration {
 
 func StartBackgroundUpdates(ctx context.Context, interval time.Duration) {
 	logging.Infof("Starting background updates at an interval of %.0f seconds", interval.Seconds())
+	defer logging.Info("BackgroundUpdates stopped")
 	UpdateJob()
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -118,7 +123,6 @@ func StartBackgroundUpdates(ctx context.Context, interval time.Duration) {
 		case <-ticker.C:
 			UpdateJob()
 		case <-ctx.Done():
-			logging.Info("Stopping BackgroundUpdates")
 			// The context is over, stop processing results
 			return
 		}
@@ -133,14 +137,17 @@ func UpdateJob() {
 		Find(&users)
 
 	wg := sync.WaitGroup{}
+
+	if enableMiscJobs {
+		runMisc(&wg)
+	}
+
 	// Do checks synchronously for now to prevent any massive rate limiting
 	for _, user := range users {
 		wg.Go(func() {
 			updateForUser(&user)
 		})
 	}
-
-	runMisc(&wg)
 
 	wg.Wait()
 }
