@@ -133,6 +133,7 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 	message := update.CallbackQuery.Message.Message
 
 	tx := db.Db().Begin()
+	defer tx.Rollback()
 
 	user, _ := userFromChatId(chatId, tx)
 

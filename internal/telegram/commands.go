@@ -12,6 +12,7 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
+	"gorm.io/gorm"
 )
 
 func createPrivacyPolicyCommand() *CommandHandler {
@@ -27,29 +28,34 @@ func createPrivacyPolicyCommand() *CommandHandler {
 
 func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatId := update.Message.Chat.ID
-	tx := db.Db().Begin()
-	user, userFound := userFromChatId(chatId, tx)
+	txErr := db.Db().Transaction(func(tx *gorm.DB) error {
+		user, userFound := userFromChatId(chatId, tx)
 
-	if userFound {
+		if userFound {
+			_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: chatId,
+				Text:   "You are already registered. Welcome back!",
+			})
+			logSendMessageError(err)
+			tx.Commit()
+			return nil
+		}
+
+		user.TelegramChatId = chatId
+		tx.Create(&user)
+		tx.Commit()
+
 		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: chatId,
-			Text:   "You are already registered. Welcome back!",
+			ChatID:    chatId,
+			ParseMode: models.ParseModeHTML,
+			Text:      "You have been registered as a user. Please set up your cookies using the /cookies command.",
 		})
 		logSendMessageError(err)
-		tx.Commit()
-		return
-	}
-
-	user.TelegramChatId = chatId
-	tx.Create(&user)
-	tx.Commit()
-
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    chatId,
-		ParseMode: models.ParseModeHTML,
-		Text:      "You have been registered as a user. Please set up your cookies using the /cookies command.",
+		return nil
 	})
-	logSendMessageError(err)
+	if txErr != nil {
+		logging.Errorf("Error occured while running startHandler transaction: %v", txErr)
+	}
 }
 
 func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -70,6 +76,7 @@ func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	tx := db.Db().Begin()
+	defer tx.Rollback()
 	user, _ := userFromChatId(update.Message.Chat.ID, tx)
 
 	cookiesRaw := dsext.Map(strings.Split(update.Message.Text, ","), func(s string) string {
@@ -141,27 +148,32 @@ func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func timezoneInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatId := update.Message.Chat.ID
 	loc, err := time.LoadLocation(update.Message.Text)
 	if err != nil || loc == nil {
 		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
+			ChatID: chatId,
 			Text:   conversationMessage(fmt.Sprintf("The timezone you specified is invalid. Please try again.\nError: %s", err)),
 		})
 		logSendMessageError(err)
 		return
 	}
 
-	tx := db.Db().Begin()
-	user, _ := userFromChatId(update.Message.Chat.ID, tx)
+	var user *db.User
+	_ = db.Db().Transaction(func(tx *gorm.DB) error {
+		var found bool
+		user, found = userFromChatId(chatId, tx)
+		if !found || user == nil {
+			return fmt.Errorf("no user found for chat ID %d", chatId)
+		}
+		user.SetLocation(loc)
+		tx.Save(user)
+		return nil
+	})
 
-	user.SetLocation(loc)
-
-	tx.Save(user)
-	tx.Commit()
-
-	convHandler.EndConversation(update.Message.Chat.ID)
+	convHandler.EndConversation(chatId)
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
+		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
 		Text:      fmt.Sprintf("Successfully update timezone to <code>%s</code>", user.Timezone),
 	})
