@@ -1,6 +1,8 @@
 package entries
 
 import (
+	"fmt"
+
 	"github.com/fanonwue/goutils/dsext"
 )
 
@@ -52,7 +54,26 @@ func (e EntryType) Name() string {
 	case EntryTypeJournalComment:
 		return "Journal Comment"
 	}
-	panic("unreachable")
+	panic(fmt.Sprintf("unreachable: unknown entry type %d", e))
+}
+
+// FilterEnvVar returns the non-prefixed environment variable name corresponding to the user filter list of this [EntryType].
+// The environment variable name might be empty (e.g., for [EntryTypeInvalid]); callers should handle this accordingly.
+func (e EntryType) FilterEnvVar() string {
+	switch e {
+	case EntryTypeSubmission:
+		return "SUBMISSIONS_USER_FILTER"
+	case EntryTypeJournal:
+		return "JOURNALS_USER_FILTER"
+	case EntryTypeNote:
+		return "NOTES_USER_FILTER"
+	case EntryTypeJournalComment, EntryTypeSubmissionComment:
+		return "COMMENTS_USER_FILTER"
+	case EntryTypeInvalid:
+		// The invalid entry type should not cause a panic, but it doesn't have an env var either
+		return ""
+	}
+	panic(fmt.Sprintf("unreachable: unknown entry type %d", e))
 }
 
 func (e EntryType) String() string {

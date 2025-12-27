@@ -112,35 +112,22 @@ func readEntryUserFilters() map[entries.EntryType][]string {
 	filterMap := make(map[entries.EntryType][]string)
 	for _, entryType := range entries.EntryTypes() {
 		filter := userFiltersForEntryType(entryType)
-		filterSlice := filter.Slice()
-		if filter != nil {
-			filterMap[entryType] = filterSlice
-			logging.Infof(
-				"User filter for type '%s' enabled. Configured usernames: [%s]",
-				entryType.Name(),
-				strings.Join(filterSlice, ", "),
-			)
+		if len(filter) == 0 {
+			continue
 		}
+		filterSlice := filter.Slice()
+		filterMap[entryType] = filterSlice
+		logging.Infof(
+			"User filter for type '%s' enabled. Configured usernames: [%s]",
+			entryType.Name(),
+			strings.Join(filterSlice, ", "),
+		)
 	}
 	return filterMap
 }
 
 func userFiltersForEntryType(entryType entries.EntryType) dsext.Set[string] {
-	envVar := ""
-	switch entryType {
-	case entries.EntryTypeSubmission:
-		envVar = "SUBMISSIONS_USER_FILTER"
-	case entries.EntryTypeJournal:
-		envVar = "JOURNALS_USER_FILTER"
-	case entries.EntryTypeNote:
-		envVar = "NOTES_USER_FILTER"
-	case entries.EntryTypeJournalComment, entries.EntryTypeSubmissionComment:
-		envVar = "COMMENTS_USER_FILTER"
-	case entries.EntryTypeInvalid:
-	default:
-		panic("unreachable")
-	}
-
+	envVar := entryType.FilterEnvVar()
 	if envVar == "" {
 		return nil
 	}
