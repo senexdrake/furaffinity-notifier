@@ -134,9 +134,8 @@ func UpdateJob() {
 	wg := sync.WaitGroup{}
 	// Do checks synchronously for now to prevent any massive rate limiting
 	for _, user := range users {
-		wg.Add(1)
-		go updateForUser(&user, func() {
-			wg.Done()
+		wg.Go(func() {
+			updateForUser(&user)
 		})
 	}
 
@@ -187,8 +186,7 @@ func applyUserFilters(c *fa.FurAffinityCollector) {
 	}
 }
 
-func updateForUser(user *db.User, doneCallback func()) {
-	defer doneCallback()
+func updateForUser(user *db.User) {
 	if user == nil {
 		logging.Errorf("user is nil, skipping update")
 		return
