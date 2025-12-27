@@ -31,10 +31,11 @@ func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	user, userFound := userFromChatId(chatId, tx)
 
 	if userFound {
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: chatId,
 			Text:   "You are already registered. Welcome back!",
 		})
+		logSendMessageError(err)
 		tx.Commit()
 		return
 	}
@@ -43,17 +44,18 @@ func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	tx.Create(&user)
 	tx.Commit()
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
 		Text:      "You have been registered as a user. Please set up your cookies using the /cookies command.",
 	})
+	logSendMessageError(err)
 }
 
 func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	convHandler.SetActiveConversationStage(update.Message.Chat.ID, stageCookieInput)
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
 		Text:      conversationMessage("Please input cookies 'a' and 'b' im the following form:\n\n<code>a=COOKIE, b=COOKIE</code>"),
@@ -62,6 +64,7 @@ func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			InputFieldPlaceholder: "a=COOKIE_1, b=COOKIE_2",
 		},
 	})
+	logSendMessageError(err)
 
 }
 
@@ -89,10 +92,11 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	}
 
 	if len(cookies) != 2 {
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   conversationMessage("You entered invalid cookies. Please try again."),
 		})
+		logSendMessageError(err)
 		return
 	}
 
@@ -101,10 +105,11 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	tx.Commit()
 
 	convHandler.EndConversation(update.Message.Chat.ID)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Updated your FA cookies!",
 	})
+	logSendMessageError(err)
 }
 
 func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -122,7 +127,7 @@ func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		timezone = location.String()
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
 		Text:      conversationMessage(fmt.Sprintf("Please input your timezone.\nCurrent timezone is <code>%s</code>.", timezone)),
@@ -131,16 +136,18 @@ func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			InputFieldPlaceholder: "Enter timezone, for example: Europe/Berlin",
 		},
 	})
+	logSendMessageError(err)
 
 }
 
 func timezoneInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	loc, err := time.LoadLocation(update.Message.Text)
 	if err != nil || loc == nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   conversationMessage(fmt.Sprintf("The timezone you specified is invalid. Please try again.\nError: %s", err)),
 		})
+		logSendMessageError(err)
 		return
 	}
 
@@ -153,29 +160,32 @@ func timezoneInputHandler(ctx context.Context, b *bot.Bot, update *models.Update
 	tx.Commit()
 
 	convHandler.EndConversation(update.Message.Chat.ID)
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
 		Text:      fmt.Sprintf("Successfully update timezone to <code>%s</code>", user.Timezone),
 	})
+	logSendMessageError(err)
 }
 
 func cancelConversationHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// Send a message to indicate the conversation has been cancelled
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "conversation cancelled",
 	})
+	logSendMessageError(err)
 }
 
 func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatId := update.Message.Chat.ID
 	user, userFound := userFromChatId(chatId, nil)
 	if !userFound {
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: chatId,
 			Text:   "No user found for your Chat ID. Have you registered using the /start command?",
 		})
+		logSendMessageError(err)
 	}
 
 	unreadOnlyStatus := func(unreadOnly bool) string {
@@ -191,30 +201,33 @@ func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	// First message part is always the command
 	if len(messageParts) < 2 {
-		b.SendMessage(ctx, &bot.SendMessageParams{
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    chatId,
 			ParseMode: models.ParseModeHTML,
 			Text: fmt.Sprintf("Please provide a parameter like 'on' or 'off'. Usage example:"+
 				"\n\n/unread_only on"+
 				"\n\nIt is currently set to <b>%s</b>", unreadOnlyStatus(user.UnreadNotesOnly)),
 		})
+		logSendMessageError(err)
 		return
 	}
 
 	user.UnreadNotesOnly = goutils.IsTruthy(messageParts[1])
 	db.Db().Save(user)
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
 		Text:      fmt.Sprintf("Notifying about <b>%s</b> messages", unreadOnlyStatus(user.UnreadNotesOnly)),
 	})
+	logSendMessageError(err)
 }
 
 func privacyPolicyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.Message.Chat.ID,
 		ParseMode: models.ParseModeHTML,
 		Text:      fmt.Sprintf(privacyPolicyTemplate, update.Message.Chat.ID),
 	})
+	logSendMessageError(err)
 }

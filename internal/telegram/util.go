@@ -4,6 +4,7 @@ import (
 	"net/url"
 
 	"github.com/fanonwue/goutils"
+	"github.com/fanonwue/goutils/logging"
 	"github.com/go-telegram/bot/models"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
@@ -73,6 +74,13 @@ func (lpoh *linkPreviewOptionsHelper) Get() *models.LinkPreviewOptions {
 
 func truncateMessage(message string) string {
 	return goutils.TruncateStringWholeWords(message, conf.MessageContentLength)
+}
+
+func logSendMessageError(err error) {
+	if err == nil {
+		return
+	}
+	logging.Errorf("Error sending message: %s", err)
 }
 
 func linkPreviewWithThumbnailOrFullView(fullView *url.URL, thumbnail *tools.ThumbnailUrl) *linkPreviewOptionsHelper {

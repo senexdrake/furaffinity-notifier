@@ -374,10 +374,11 @@ func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
-	b.SendMessage(ctx, &bot.SendMessageParams{
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "default Handler",
 	})
+	logSendMessageError(err)
 }
 
 func userFromChatId(chatId int64, tx *gorm.DB) (*db.User, bool) {
@@ -417,10 +418,11 @@ func creatorOnlyMiddleware(next bot.HandlerFunc) bot.HandlerFunc {
 		}
 
 		if conf.TelegramCreatorId != chatId {
-			b.SendMessage(ctx, &bot.SendMessageParams{
+			_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: chatId,
 				Text:   "This bot is not yet available for the public. If you are interested, please contact this bot's creator (see bot description)",
 			})
+			logSendMessageError(err)
 		} else {
 			next(ctx, b, update)
 		}

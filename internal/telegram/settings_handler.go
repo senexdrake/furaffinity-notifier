@@ -121,10 +121,11 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 			if found {
 				editStatusMessage(messageId, nil)
 			}
-			b.SendMessage(ctx, &bot.SendMessageParams{
+			_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: chatId,
 				Text:   "Cancelled settings conversation. Please enter your message again.",
 			})
+			logSendMessageError(err)
 		}
 		return
 	}
