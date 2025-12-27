@@ -3,6 +3,7 @@ package conf
 import (
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/fanonwue/goutils/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
@@ -57,8 +58,17 @@ func readBotToken() string {
 	return botToken
 }
 
+var setupDone = false
+var setupMut = sync.Mutex{}
+
 func Setup() {
+	setupMut.Lock()
+	defer setupMut.Unlock()
+	if setupDone {
+		return
+	}
 	MessageContentLength = readMessageContentLength()
 	TelegramCreatorId = readTelegramCreatorId()
 	BotToken = readBotToken()
+	setupDone = true
 }

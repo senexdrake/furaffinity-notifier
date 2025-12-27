@@ -20,6 +20,7 @@ import (
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/misc"
 	"github.com/senexdrake/furaffinity-notifier/internal/telegram"
+	"github.com/senexdrake/furaffinity-notifier/internal/telegram/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -48,6 +49,8 @@ func init() {
 	logging.Info("---- SETTING UP BOT ----")
 	logging.Info("Welcome to FurAffinity Notifier!")
 
+	conf.Setup()
+
 	if enableUserFilters {
 		for _, entryType := range entries.EntryTypes() {
 			filter := userFiltersForEntryType(entryType)
@@ -68,10 +71,12 @@ func init() {
 
 	enableLoginCheck = envBoolLog("ENABLE_LOGIN_CHECK", enableLoginCheck)
 	enableKitoraRequestFormCheck = envBoolLog("ENABLE_KITORA_FORM_CHECK", enableKitoraRequestFormCheck)
+	if enableKitoraRequestFormCheck {
+		logging.Infof("Kitora request form check enabled. User %d will be notified about future availability.", misc.KitoraNotificationTarget())
+	}
 }
 
 func main() {
-	db.CreateDatabase()
 	appContext, cancel := signal.NotifyContext(context.Background(),
 		os.Interrupt,
 		os.Kill,
@@ -79,13 +84,10 @@ func main() {
 		syscall.SIGQUIT,
 	)
 	defer cancel()
+	db.CreateDatabase()
 
 	logging.Infof("Starting Bot...")
 	_ = telegram.StartBot(appContext)
-
-	if enableKitoraRequestFormCheck {
-		logging.Infof("Kitora request form check enabled. User %d will be notified about future availability.", misc.KitoraNotificationTarget())
-	}
 
 	go StartBackgroundUpdates(appContext, updateInterval())
 
@@ -98,7 +100,6 @@ func updateInterval() time.Duration {
 	updateIntervalRaw, err := strconv.Atoi(os.Getenv(util.PrefixEnvVar("UPDATE_INTERVAL")))
 	if err == nil {
 		interval = time.Duration(updateIntervalRaw) * time.Second
-
 	}
 	if interval < minimumUpdateInterval {
 		logging.Warnf("UPDATE_INTERVAL set too low, setting it to the minimum interval of %.0f seconds", minimumUpdateInterval.Seconds())
