@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fanonwue/goutils"
 	"github.com/fanonwue/goutils/dsext"
 	"github.com/fanonwue/goutils/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
@@ -134,7 +135,7 @@ func userFiltersForEntryType(entryType entries.EntryType) dsext.Set[string] {
 
 	filterRaw := os.Getenv(util.PrefixEnvVar(envVar))
 	users := dsext.NewSet[string]()
-	for _, userRaw := range util.SplitAny(filterRaw, ", ") {
+	for _, userRaw := range goutils.SplitAny(filterRaw, ", ") {
 		user := tools.NormalizeUsername(userRaw)
 		if user != "" {
 			users.Add(user)
