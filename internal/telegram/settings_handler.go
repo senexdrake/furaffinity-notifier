@@ -10,6 +10,7 @@ import (
 	"github.com/fanonwue/goutils/dsext"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/senexdrake/furaffinity-notifier/internal/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
@@ -177,21 +178,37 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 
 func entryTypeStatusList(user *db.User) string {
 	statusMap := user.EntryTypeStatus()
-	statusFunc := func(entryType entries.EntryType) string {
+	filters := conf.EntryUserFilters()
+	entryStatusFunc := func(entryType entries.EntryType) string {
 		_, found := statusMap[entryType]
 		if found {
 			return util.EmojiGreenCheck
 		}
 		return util.EmojiCross
 	}
+	entryFilterFunc := func(entryType entries.EntryType) string {
+		entryFilters := filters[entryType]
+		if len(entryFilters) == 0 {
+			return ""
+		}
+		return strings.Join(entryFilters, ",")
+	}
+	entryTextFunc := func(entryType entries.EntryType) string {
+		status := entryStatusFunc(entryType)
+		filter := entryFilterFunc(entryType)
+		if filter == "" {
+			return status
+		}
+		return fmt.Sprintf("%s\nFilter: <code>%s</code>", status, filter)
+	}
+
+	args := dsext.Map(entries.ValidEntryTypes(), func(t entries.EntryType) any {
+		return entryTextFunc(t)
+	})
 
 	return fmt.Sprintf(
 		statusTemplate,
-		statusFunc(entries.EntryTypeNote),
-		statusFunc(entries.EntryTypeSubmission),
-		statusFunc(entries.EntryTypeSubmissionComment),
-		statusFunc(entries.EntryTypeJournal),
-		statusFunc(entries.EntryTypeJournalComment),
+		args...,
 	)
 }
 
