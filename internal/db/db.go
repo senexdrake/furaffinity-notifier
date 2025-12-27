@@ -189,5 +189,8 @@ func Db() *gorm.DB {
 
 func CreateDatabase() {
 	migrate()
-	Db().AutoMigrate(&User{}, &UserCookie{}, &KnownEntry{}, &UserEntryType{})
+	err := Db().AutoMigrate(&User{}, &UserCookie{}, &KnownEntry{}, &UserEntryType{})
+	if err != nil {
+		logging.Errorf("Error creating database: %s", err)
+	}
 }
