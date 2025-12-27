@@ -282,7 +282,6 @@ func envBoolLog(key string, defaultValue bool) bool {
 func runMisc(wg *sync.WaitGroup) {
 	if enableKitoraRequestFormCheck {
 		wg.Go(func() {
-			time.Sleep(2 * time.Second)
 			checkKitoraCommissionStatus(misc.KitoraNotificationTarget())
 		})
 	}
