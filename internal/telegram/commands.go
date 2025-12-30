@@ -27,7 +27,7 @@ func createPrivacyPolicyCommand() *CommandHandler {
 }
 
 func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	chatId := update.Message.Chat.ID
+	chatId, _ := chatIdFromUpdate(update)
 	txErr := db.Db().Transaction(func(tx *gorm.DB) error {
 		user, userFound := userFromChatId(chatId, tx)
 
@@ -59,10 +59,11 @@ func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	convHandler.SetActiveConversationStage(update.Message.Chat.ID, stageCookieInput)
+	chatId, _ := chatIdFromUpdate(update)
+	convHandler.SetActiveConversationStage(chatId, stageCookieInput)
 
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
+		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
 		Text:      conversationMessage("Please input cookies 'a' and 'b' im the following form:\n\n<code>a=COOKIE, b=COOKIE</code>"),
 		ReplyMarkup: &models.ForceReply{
@@ -75,9 +76,10 @@ func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatId, _ := chatIdFromUpdate(update)
 	tx := db.Db().Begin()
 	defer tx.Rollback()
-	user, _ := userFromChatId(update.Message.Chat.ID, tx)
+	user, _ := userFromChatId(chatId, tx)
 
 	cookiesRaw := dsext.Map(strings.Split(update.Message.Text, ","), func(s string) string {
 		return strings.TrimSpace(s)
@@ -100,7 +102,7 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 
 	if len(cookies) != 2 {
 		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
+			ChatID: chatId,
 			Text:   conversationMessage("You entered invalid cookies. Please try again."),
 		})
 		logSendMessageError(err)
@@ -111,16 +113,16 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 	tx.Create(&cookies)
 	tx.Commit()
 
-	convHandler.EndConversation(update.Message.Chat.ID)
+	convHandler.EndConversation(chatId)
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
+		ChatID: chatId,
 		Text:   "Updated your FA cookies!",
 	})
 	logSendMessageError(err)
 }
 
 func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	chatId := update.Message.Chat.ID
+	chatId, _ := chatIdFromUpdate(update)
 	user, _ := userFromChatId(chatId, nil)
 	if user == nil {
 		logging.Errorf("Error getting user from chat ID %d", chatId)
@@ -135,7 +137,7 @@ func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
+		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
 		Text:      conversationMessage(fmt.Sprintf("Please input your timezone.\nCurrent timezone is <code>%s</code>.", timezone)),
 		ReplyMarkup: &models.ForceReply{
@@ -148,7 +150,7 @@ func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func timezoneInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	chatId := update.Message.Chat.ID
+	chatId, _ := chatIdFromUpdate(update)
 	loc, err := time.LoadLocation(update.Message.Text)
 	if err != nil || loc == nil {
 		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
@@ -181,16 +183,17 @@ func timezoneInputHandler(ctx context.Context, b *bot.Bot, update *models.Update
 }
 
 func cancelConversationHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatId, _ := chatIdFromUpdate(update)
 	// Send a message to indicate the conversation has been cancelled
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
+		ChatID: chatId,
 		Text:   "conversation cancelled",
 	})
 	logSendMessageError(err)
 }
 
 func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	chatId := update.Message.Chat.ID
+	chatId, _ := chatIdFromUpdate(update)
 	user, userFound := userFromChatId(chatId, nil)
 	if !userFound {
 		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
@@ -236,10 +239,11 @@ func unreadOnlyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func privacyPolicyHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatId, _ := chatIdFromUpdate(update)
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:    update.Message.Chat.ID,
+		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
-		Text:      fmt.Sprintf(privacyPolicyTemplate, update.Message.Chat.ID),
+		Text:      fmt.Sprintf(privacyPolicyTemplate, chatId),
 	})
 	logSendMessageError(err)
 }

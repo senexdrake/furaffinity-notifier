@@ -19,8 +19,9 @@ type CommandHandler struct {
 
 func (ch *CommandHandler) ChatActionHandler() bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+		chatId, _ := chatIdFromUpdate(update)
 		_, err := b.SendChatAction(ctx, &bot.SendChatActionParams{
-			ChatID: update.Message.Chat.ID,
+			ChatID: chatId,
 			Action: ch.ChatAction,
 		})
 		if err != nil {

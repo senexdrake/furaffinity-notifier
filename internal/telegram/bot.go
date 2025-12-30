@@ -370,13 +370,14 @@ func SendMessage(chatId int64, message string) (*models.Message, error) {
 }
 
 func defaultHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	if update.Message == nil {
+	chatId, err := chatIdFromUpdate(update)
+	if err != nil {
+		logging.Warnf("Error determining Chat ID: %v", err)
 		return
 	}
-
-	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "default Handler",
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: chatId,
+		Text:   "Unsupported action. Please use a command from the command list!",
 	})
 	logSendMessageError(err)
 }

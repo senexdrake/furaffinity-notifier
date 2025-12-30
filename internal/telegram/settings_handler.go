@@ -82,17 +82,18 @@ func settingsKeyboard() *models.InlineKeyboardMarkup {
 }
 
 func settingsHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	convHandler.SetActiveConversationStage(update.Message.Chat.ID, stageSettings)
-	user, _ := userFromChatId(update.Message.Chat.ID, nil)
+	chatId, _ := chatIdFromUpdate(update)
+	convHandler.SetActiveConversationStage(chatId, stageSettings)
+	user, _ := userFromChatId(chatId, nil)
 	msg, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      update.Message.Chat.ID,
+		ChatID:      chatId,
 		ParseMode:   models.ParseModeHTML,
 		Text:        entryTypeStatusList(user),
 		ReplyMarkup: settingsKeyboard(),
 	})
 	if err == nil {
 		// Set the current settings message to reference it later when editing
-		setMessageIdForChat(update.Message.Chat.ID, msg.ID)
+		setMessageIdForChat(chatId, msg.ID)
 	}
 }
 
