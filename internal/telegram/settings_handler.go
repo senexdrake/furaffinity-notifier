@@ -135,7 +135,6 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 	message := update.CallbackQuery.Message.Message
 
 	tx := db.Db().Begin()
-	defer tx.Rollback()
 
 	user, _ := userFromChatId(chatId, tx)
 
@@ -143,11 +142,13 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 	if queryData == "cancel" {
 		convHandler.EndConversation(chatId)
 		editStatusMessage(message.ID, user)
+		tx.Rollback()
 		return
 	}
 
 	entryType := dataToEntryType(queryData)
 	if !entries.ValidEntryTypesSet().Contains(entryType) {
+		tx.Rollback()
 		return
 	}
 

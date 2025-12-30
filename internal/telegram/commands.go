@@ -37,25 +37,23 @@ func startHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 				Text:   "You are already registered. Welcome back!",
 			})
 			logSendMessageError(err)
-			tx.Commit()
 			return nil
 		}
 
 		user.TelegramChatId = chatId
 		tx.Create(&user)
-		tx.Commit()
-
-		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    chatId,
-			ParseMode: models.ParseModeHTML,
-			Text:      "You have been registered as a user. Please set up your cookies using the /cookies command.",
-		})
-		logSendMessageError(err)
 		return nil
 	})
 	if txErr != nil {
 		logging.Errorf("Error occured while running startHandler transaction: %v", txErr)
 	}
+
+	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    chatId,
+		ParseMode: models.ParseModeHTML,
+		Text:      "You have been registered as a user. Please set up your cookies using the /cookies command.",
+	})
+	logSendMessageError(err)
 }
 
 func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -77,9 +75,7 @@ func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	chatId, _ := chatIdFromUpdate(update)
-	tx := db.Db().Begin()
-	defer tx.Rollback()
-	user, _ := userFromChatId(chatId, tx)
+	user, _ := userFromChatId(chatId, nil)
 
 	cookiesRaw := dsext.Map(strings.Split(update.Message.Text, ","), func(s string) string {
 		return strings.TrimSpace(s)
@@ -109,9 +105,23 @@ func cookieInputHandler(ctx context.Context, b *bot.Bot, update *models.Update) 
 		return
 	}
 
-	tx.Delete(&db.UserCookie{}, "user_id = ?", user.ID)
-	tx.Create(&cookies)
-	tx.Commit()
+	txErr := db.Db().Transaction(func(tx *gorm.DB) error {
+		tx.Delete(&db.UserCookie{}, "user_id = ?", user.ID)
+		if tx.Error != nil {
+			return tx.Error
+		}
+		tx.Create(&cookies)
+		return tx.Error
+	})
+	if txErr != nil {
+		logging.Errorf("Error saving cookies to db: %v", txErr)
+		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatId,
+			Text:   fmt.Sprintf("Error saving your cookies: %s", txErr),
+		})
+		logSendMessageError(err)
+		return
+	}
 
 	convHandler.EndConversation(chatId)
 	_, err := b.SendMessage(ctx, &bot.SendMessageParams{
