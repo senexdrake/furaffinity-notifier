@@ -14,6 +14,10 @@ ifeq ($(GOOS), windows)
 	EXECUTABLE_NAME := $(EXECUTABLE_NAME).exe
 endif
 
+# set default amd64 architecture level
+# see https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels
+GOAMD64 ?= v2
+
 BUILD_DATE ?= $(shell date '+%Y-%m-%dT%H:%M:%S%z')
 LD_FLAGS := $(LD_FLAGS) -X 'github.com/fanonwue/goutils/buildinfo.timestamp=$(BUILD_DATE)'
 
