@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fanonwue/goutils"
+	"github.com/fanonwue/goutils/buildinfo"
 	"github.com/fanonwue/goutils/logging"
 	"github.com/joho/godotenv"
 	"github.com/senexdrake/furaffinity-notifier/internal/conf"
@@ -34,6 +35,13 @@ func init() {
 
 	logging.Info("---- SETTING UP BOT ----")
 	logging.Info("Welcome to FurAffinity Notifier!")
+
+	buildInfoString := "unknown"
+	buildTimestamp, err := buildinfo.Timestamp()
+	if err == nil {
+		buildInfoString = buildTimestamp.String()
+	}
+	logging.Info("Build info: " + buildInfoString)
 
 	conf.Setup()
 

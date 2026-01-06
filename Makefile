@@ -14,6 +14,9 @@ ifeq ($(GOOS), windows)
 	EXECUTABLE_NAME := $(EXECUTABLE_NAME).exe
 endif
 
+BUILD_DATE ?= $(shell date '+%Y-%m-%dT%H:%M:%S%z')
+LD_FLAGS := $(LD_FLAGS) -X 'github.com/fanonwue/goutils/buildinfo.timestamp=$(BUILD_DATE)'
+
 build:
 	CGO_ENABLED=1 go build -tags $(GO_TAGS) -o bin/$(EXECUTABLE_NAME) --ldflags="$(LD_FLAGS)"
 
