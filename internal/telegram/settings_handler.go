@@ -181,7 +181,7 @@ func onSettingsKeyboardSelect(ctx context.Context, b *bot.Bot, update *models.Up
 func entryTypeStatusList(user *db.User) string {
 	statusMap := user.EntryTypeStatus()
 	filters := conf.EntryUserFilters()
-	entryStatusFunc := func(entryType entries.EntryType) string {
+	entryStatusFunc := func(entryType entries.EntryType) rune {
 		_, found := statusMap[entryType]
 		if found {
 			return util.EmojiGreenCheck
@@ -196,7 +196,7 @@ func entryTypeStatusList(user *db.User) string {
 		return strings.Join(entryFilters, ",")
 	}
 	entryTextFunc := func(entryType entries.EntryType) string {
-		status := entryStatusFunc(entryType)
+		status := string(entryStatusFunc(entryType))
 		filter := entryFilterFunc(entryType)
 		if filter == "" {
 			return status

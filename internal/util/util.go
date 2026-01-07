@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	EmojiGreenCheck  = "✅"
-	EmojiCross       = "❌"
-	EmojiSquareRed   = "🟥"
-	EmojiSquareBlue  = "🟦"
-	EmojiSquareWhite = "⬜️"
+	EmojiGreenCheck  = rune('✅')
+	EmojiCross       = rune('❌')
+	EmojiSquareRed   = rune('🟥')
+	EmojiSquareBlue  = rune('🟦')
+	EmojiSquareWhite = rune('⬜')
 )
 
 const (

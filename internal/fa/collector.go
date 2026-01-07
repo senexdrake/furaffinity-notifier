@@ -80,10 +80,10 @@ func (r Rating) String() string {
 	case RatingAdult:
 		return "Adult"
 	}
-	panic("unreachable")
+	panic("invalid rating")
 }
 
-func (r Rating) Symbol() string {
+func (r Rating) SymbolRune() rune {
 	switch r {
 	case RatingGeneral:
 		return util.EmojiSquareWhite
@@ -92,7 +92,11 @@ func (r Rating) Symbol() string {
 	case RatingAdult:
 		return util.EmojiSquareRed
 	}
-	panic("unreachable")
+	panic("invalid rating")
+}
+
+func (r Rating) Symbol() string {
+	return string(r.SymbolRune())
 }
 
 const userAgent = util.HttpDefaultUserAgent
