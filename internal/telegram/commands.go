@@ -64,10 +64,6 @@ func cookieHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
 		Text:      conversationMessage("Please input cookies 'a' and 'b' im the following form:\n\n<code>a=COOKIE, b=COOKIE</code>"),
-		ReplyMarkup: &models.ForceReply{
-			ForceReply:            true,
-			InputFieldPlaceholder: "a=COOKIE_1, b=COOKIE_2",
-		},
 	})
 	logSendMessageError(err)
 
@@ -149,11 +145,7 @@ func timezoneHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    chatId,
 		ParseMode: models.ParseModeHTML,
-		Text:      conversationMessage(fmt.Sprintf("Please input your timezone.\nCurrent timezone is <code>%s</code>.", timezone)),
-		ReplyMarkup: &models.ForceReply{
-			ForceReply:            true,
-			InputFieldPlaceholder: "Enter timezone, for example: Europe/Berlin",
-		},
+		Text:      conversationMessage(fmt.Sprintf("Please input your timezone, for example: <code>Europe/Berlin</code>.\nCurrent timezone is <code>%s</code>.", timezone)),
 	})
 	logSendMessageError(err)
 
