@@ -58,8 +58,7 @@ func (tu *ThumbnailUrl) WithSizeSmall() *ThumbnailUrl {
 }
 
 func (tu *ThumbnailUrl) ToUrl() *url.URL {
-	tmpUrl := tu.URL
-	return &tmpUrl
+	return new(tu.URL)
 }
 
 func NormalizeUsername(user string) string {

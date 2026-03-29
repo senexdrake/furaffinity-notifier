@@ -109,8 +109,7 @@ func (u *User) SetCredentialsValid(valid bool) {
 	if valid {
 		u.InvalidCredentialsSentAt = nil
 	} else {
-		now := time.Now()
-		u.InvalidCredentialsSentAt = &now
+		u.InvalidCredentialsSentAt = new(time.Now())
 	}
 }
 

@@ -221,12 +221,11 @@ func HandleNewNote(summary *fa.NoteEntry, user *db.User) {
 		return
 	}
 
-	notifiedAt := time.Now()
 	db.Db().Create(&db.KnownEntry{
 		EntryType:  entries.EntryTypeNote,
 		ID:         summary.ID(),
 		UserID:     user.ID,
-		NotifiedAt: &notifiedAt,
+		NotifiedAt: new(time.Now()),
 		SentDate:   summary.Date(),
 	})
 }
@@ -280,12 +279,11 @@ func HandleNewSubmission(submission *fa.SubmissionEntry, user *db.User) {
 		return
 	}
 
-	notifiedAt := time.Now()
 	db.Db().Create(&db.KnownEntry{
 		EntryType:  entries.EntryTypeSubmission,
 		ID:         submission.ID(),
 		UserID:     user.ID,
-		NotifiedAt: &notifiedAt,
+		NotifiedAt: new(time.Now()),
 		SentDate:   submission.Date(),
 	})
 }
@@ -349,12 +347,11 @@ func HandleNewEntry(entry fa.Entry, user *db.User) {
 		return
 	}
 
-	notifiedAt := time.Now()
 	db.Db().Create(&db.KnownEntry{
 		EntryType:  entry.EntryType(),
 		ID:         entry.ID(),
 		UserID:     user.ID,
-		NotifiedAt: &notifiedAt,
+		NotifiedAt: new(time.Now()),
 		SentDate:   entry.Date(),
 	})
 }
