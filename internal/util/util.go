@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"html"
 	"slices"
 	"strings"
@@ -56,6 +57,26 @@ func FixAutoLinks(dom *goquery.Selection) {
 
 func UnescapeHtml(s string) string {
 	return html.UnescapeString(s)
+}
+
+func ParseDate(s string, layouts ...string) (time.Time, error) {
+	return ParseDateInLocation(s, nil, layouts...)
+}
+
+func ParseDateInLocation(s string, location *time.Location, layouts ...string) (time.Time, error) {
+	var t time.Time
+	var err error
+	for _, layout := range layouts {
+		if location == nil {
+			t, err = time.Parse(layout, s)
+		} else {
+			t, err = time.ParseInLocation(layout, s, location)
+		}
+		if err == nil {
+			return t, nil
+		}
+	}
+	return t, fmt.Errorf("failed to parse date: %s", s)
 }
 
 // BackwardsChannel iterates over a channel, putting all elements into an internal buffer. It then produces a new channel,

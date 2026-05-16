@@ -8,6 +8,9 @@ import (
 
 type EntryType uint8
 
+const faDateLayout12Hour = "January 2, 2006 03:04:05 PM"
+const faDateLayout24Hour = "January 2, 2006 15:04:05"
+
 const (
 	EntryTypeInvalid EntryType = iota
 	EntryTypeNote
@@ -78,4 +81,8 @@ func (e EntryType) FilterEnvVar() string {
 
 func (e EntryType) String() string {
 	return e.Name()
+}
+
+func (e EntryType) DateLayouts() []string {
+	return []string{faDateLayout12Hour, faDateLayout24Hour}
 }

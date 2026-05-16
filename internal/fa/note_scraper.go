@@ -15,6 +15,7 @@ import (
 	"github.com/fanonwue/goutils/logging"
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -36,7 +37,6 @@ type (
 )
 
 const notesPath = "/msg/pms/"
-const notesDateLayout = "January 2, 2006 03:04:05 PM"
 
 func (ne *NoteEntry) EntryType() entries.EntryType { return entries.EntryTypeNote }
 func (ne *NoteEntry) ID() uint                     { return ne.id }
@@ -324,9 +324,9 @@ func (fc *FurAffinityCollector) parseNoteSummary(noteElement *colly.HTMLElement)
 		}
 
 		dateString := trimHtmlText(e.Text)
-		date, err := time.ParseInLocation(notesDateLayout, dateString, fc.notesDateLocation())
+		date, err := tools.ParseDateFromString(entries.EntryTypeNote, dateString, fc.notesDateLocation())
 		if err != nil {
-			logging.Errorf("Error parsing note send date (no time attribute was found). Expected layout '%s', got value '%s'", notesDateLayout, dateString)
+			logging.Errorf("error parsing note sent date: %s", err)
 			parseError = true
 			return
 		}

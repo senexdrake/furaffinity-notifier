@@ -60,7 +60,6 @@ type (
 )
 
 const otherMessagesPath = "/msg/others/"
-const entryDateLayout = "January 2, 2006 03:04:05 PM"
 
 func (ce *CommentEntry) EntryType() entries.EntryType { return ce.entryType }
 func (ce *CommentEntry) Date() time.Time              { return ce.date }
@@ -487,9 +486,9 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 		}
 
 		dateString := trimHtmlText(e.Text)
-		date, err := time.ParseInLocation(entryDateLayout, dateString, fc.location())
+		date, err := tools.ParseDateFromString(entryType, dateString, fc.location())
 		if err != nil {
-			parseError = errors.New(fmt.Sprintf("error parsing timestamp '%s': %s", dateString, err))
+			parseError = errors.New(fmt.Sprintf("error parsing entry date: %s", err))
 			return
 		}
 		msg.date = date

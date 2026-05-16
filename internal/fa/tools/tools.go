@@ -7,9 +7,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/fanonwue/goutils/dsext"
 	"github.com/fanonwue/goutils/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
+	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 type ThumbnailUrl struct {
@@ -84,4 +87,17 @@ func TagListToSet(rawTagList string) dsext.Set[string] {
 	return dsext.NewSetSeq(dsext.MapSeq(strings.SplitSeq(rawTagList, " "), func(s string) string {
 		return strings.TrimSpace(s)
 	}))
+}
+
+func ParseDateFromString(entryType entries.EntryType, rawDate string, location *time.Location) (time.Time, error) {
+	layoutsToTry := entryType.DateLayouts()
+	date, err := util.ParseDateInLocation(rawDate, location, layoutsToTry...)
+	if err != nil {
+		layoutsFormatted := strings.Join(
+			dsext.Map(layoutsToTry, func(s string) string { return fmt.Sprintf("'%s'", s) }),
+			", ")
+		msg := fmt.Sprintf("error parsing date: tried layouts [%s], got value '%s'", layoutsFormatted, rawDate)
+		return time.Time{}, errors.New(msg)
+	}
+	return date, nil
 }
