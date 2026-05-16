@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	EnableNotes              = true
 	EnableOtherEntries       = true
 	EnableSubmissions        = true
 	EnableUserFilters        = true

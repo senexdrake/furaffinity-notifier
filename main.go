@@ -168,7 +168,7 @@ func updateForUser(user *db.User) {
 
 	entryTypes := user.EnabledEntryTypes()
 
-	if slices.Contains(entryTypes, entries.EntryTypeNote) {
+	if conf.EnableNotes && slices.Contains(entryTypes, entries.EntryTypeNote) {
 		channel := c.GetNewNotesWithContent()
 		entryHandlerWrapper(user, channel, func(note *fa.NoteEntry) {
 			telegram.HandleNewNote(note, user)
