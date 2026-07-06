@@ -36,6 +36,7 @@ const DefaultMessageContentLength uint = MaxMessageContentLength
 var iterateSubmissionsBackwards = true
 var enableLoginCheck = true
 var enableKitoraRequestFormCheck = false
+var enableExternalLinkRewrite = true
 
 var MessageContentLength = DefaultMessageContentLength
 var TelegramCreatorId int64 = 0
@@ -64,6 +65,7 @@ func Setup() {
 	}
 
 	enableLoginCheck = envBoolLog("ENABLE_LOGIN_CHECK", enableLoginCheck)
+	enableExternalLinkRewrite = envBoolLog("ENABLE_EXTERNAL_LINK_REWRITE", enableExternalLinkRewrite)
 
 	if EnableMiscJobs {
 		enableKitoraRequestFormCheck = envBoolLog("ENABLE_KITORA_FORM_CHECK", enableKitoraRequestFormCheck)
@@ -153,6 +155,9 @@ func EntryUserFilters() map[entries.EntryType][]string {
 
 func EnableLoginCheck() bool {
 	return enableLoginCheck
+}
+func EnableExternalLinkRewrite() bool {
+	return enableExternalLinkRewrite
 }
 
 func EnableKitoraRequestFormCheck() bool {

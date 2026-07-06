@@ -16,7 +16,6 @@ import (
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
-	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
 type (
@@ -220,7 +219,7 @@ func (fc *FurAffinityCollector) GetNoteContent(note uint, markUnread bool) *Note
 		dom.Find(".noteWarningMessage").Remove()
 		dom.Find(".section-options").Remove()
 
-		util.FixAutoLinks(e.DOM)
+		tools.FixLinks(e.DOM)
 
 		textParts := strings.Split(trimHtmlText(dom.Text()), faNoteSeparator)
 		text := ""

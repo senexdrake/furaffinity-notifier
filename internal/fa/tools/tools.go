@@ -9,8 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/fanonwue/goutils/dsext"
 	"github.com/fanonwue/goutils/logging"
+	"github.com/senexdrake/furaffinity-notifier/internal/conf"
+	faconf "github.com/senexdrake/furaffinity-notifier/internal/fa/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
@@ -96,4 +99,41 @@ func ParseDateFromString(entryType entries.EntryType, rawDate string, location *
 		return time.Time{}, errors.New(msg)
 	}
 	return date, nil
+}
+
+func FixLinks(dom *goquery.Selection) {
+	shortenedLinks := dom.Find("a.auto_link_shortened")
+	shortenedLinks.Each(func(i int, sel *goquery.Selection) {
+		href, found := sel.Attr("href")
+		if !found || href == "" {
+			return
+		}
+		parsed, err := url.Parse(href)
+		if err != nil {
+			logging.Warnf("Failed parsing message link: %s", err)
+		}
+
+		if conf.EnableExternalLinkRewrite() {
+			parsed = removeFaExternalUrl(parsed)
+		}
+
+		sel.SetText(parsed.String())
+	})
+}
+
+func removeFaExternalUrl(u *url.URL) *url.URL {
+	if faconf.FaHost != u.Host || !strings.Contains(u.Path, "externalurl") {
+		return u
+	}
+	queryValues := u.Query()
+	target := queryValues.Get("q")
+	if target == "" {
+		return u
+	}
+	parsed, err := url.Parse(target)
+	if err != nil {
+		logging.Warnf("Failed parsing external link target: %s", err)
+		return u
+	}
+	return parsed
 }

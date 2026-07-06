@@ -302,7 +302,7 @@ func (fc *FurAffinityCollector) getCommentContent(entry *CommentEntry) *CommentC
 	c.OnHTML(commentIdTag, func(e *colly.HTMLElement) {
 		parent := e.DOM.Parent()
 		commentTextElement := parent.Find(".comment-content .comment_text").First()
-		util.FixAutoLinks(commentTextElement)
+		tools.FixLinks(commentTextElement)
 		content.text = trimHtmlText(commentTextElement.Text())
 		valid = len(content.text) > 0
 	})
@@ -326,7 +326,7 @@ func (fc *FurAffinityCollector) getJournalContent(entry *JournalEntry) *JournalC
 
 	c.OnHTML("#site-content .journal-content", func(e *colly.HTMLElement) {
 		fc.removeHeadersAndFooters(e.DOM, entry.EntryType())
-		util.FixAutoLinks(e.DOM)
+		tools.FixLinks(e.DOM)
 		content.text = trimHtmlText(e.DOM.Text())
 		valid = len(content.text) > 0
 	})
@@ -458,7 +458,7 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 
 			msg.from = FurAffinityUser{
 				ProfileUrl:  link,
-				UserName:    tools.NormalizeUsername(username),
+				UserName:    util.NormalizeUsername(username),
 				DisplayName: trimHtmlText(e.Text),
 			}
 		} else if i == indexTitle {
