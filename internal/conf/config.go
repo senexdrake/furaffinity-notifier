@@ -11,7 +11,6 @@ import (
 	"github.com/fanonwue/goutils/dsext"
 	"github.com/fanonwue/goutils/logging"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
-	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
 )
 
@@ -137,7 +136,7 @@ func userFiltersForEntryType(entryType entries.EntryType) dsext.Set[string] {
 	filterRaw := os.Getenv(util.PrefixEnvVar(envVar))
 	users := dsext.NewSet[string]()
 	for _, userRaw := range goutils.SplitAny(filterRaw, ", ") {
-		user := tools.NormalizeUsername(userRaw)
+		user := util.NormalizeUsername(userRaw)
 		if user != "" {
 			users.Add(user)
 		}

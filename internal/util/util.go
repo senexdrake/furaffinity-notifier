@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/fanonwue/goutils"
 )
 
@@ -44,17 +43,6 @@ func ToUTC(time *time.Time) *time.Time {
 	return new(time.UTC())
 }
 
-func FixAutoLinks(dom *goquery.Selection) {
-	shortenedLinks := dom.Find("a.auto_link_shortened")
-	shortenedLinks.Each(func(i int, sel *goquery.Selection) {
-		href, found := sel.Attr("href")
-		if !found || href == "" {
-			return
-		}
-		sel.SetText(href)
-	})
-}
-
 func UnescapeHtml(s string) string {
 	return html.UnescapeString(s)
 }
@@ -77,6 +65,10 @@ func ParseDateInLocation(s string, location *time.Location, layouts ...string) (
 		}
 	}
 	return t, fmt.Errorf("failed to parse date: %s", s)
+}
+
+func NormalizeUsername(u string) string {
+	return strings.ToLower(strings.TrimSpace(u))
 }
 
 // BackwardsChannel iterates over a channel, putting all elements into an internal buffer. It then produces a new channel,

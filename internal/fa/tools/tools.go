@@ -64,10 +64,6 @@ func (tu *ThumbnailUrl) ToUrl() *url.URL {
 	return new(tu.URL)
 }
 
-func NormalizeUsername(user string) string {
-	return strings.ToLower(strings.TrimSpace(user))
-}
-
 func UsernameFromProfileLink(link *url.URL) (string, error) {
 	if link == nil {
 		return "", errors.New("profile link is nil")

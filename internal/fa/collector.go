@@ -182,7 +182,7 @@ func (fc *FurAffinityCollector) IsWhitelisted(entryType entries.EntryType, user 
 	if !found {
 		return true
 	}
-	return filter.Contains(tools.NormalizeUsername(user))
+	return filter.Contains(util.NormalizeUsername(user))
 }
 
 func (fc *FurAffinityCollector) SetUserFilter(entryType entries.EntryType, users []string) {
@@ -191,7 +191,7 @@ func (fc *FurAffinityCollector) SetUserFilter(entryType entries.EntryType, users
 		delete(fc.userFilters, entryType)
 		return
 	}
-	fc.userFilters[entryType] = dsext.NewSetSlice(dsext.Map(users, tools.NormalizeUsername))
+	fc.userFilters[entryType] = dsext.NewSetSlice(dsext.Map(users, util.NormalizeUsername))
 }
 
 func (fc *FurAffinityCollector) UserID() uint {
