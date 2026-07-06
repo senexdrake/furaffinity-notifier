@@ -13,6 +13,7 @@ import (
 	"github.com/fanonwue/goutils/logging"
 	"github.com/gocolly/colly/v2"
 	"github.com/senexdrake/furaffinity-notifier/internal/db"
+	"github.com/senexdrake/furaffinity-notifier/internal/fa/conf"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/entries"
 	"github.com/senexdrake/furaffinity-notifier/internal/fa/tools"
 	"github.com/senexdrake/furaffinity-notifier/internal/util"
@@ -100,7 +101,7 @@ func (r Rating) Symbol() string {
 }
 
 const userAgent = util.HttpDefaultUserAgent
-const faBaseUrl = "https://www.furaffinity.net"
+const faBaseUrl = conf.FaBaseUrl
 const faTimezone = "America/Los_Angeles"
 const faNoteSeparator = "—————————"
 const faDefaultUsername = "UNKNOWN"
