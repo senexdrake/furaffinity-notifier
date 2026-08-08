@@ -334,7 +334,7 @@ func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *Su
 
 	valid := false
 
-	c.OnHTML(".submission-content", func(e *colly.HTMLElement) {
+	c.OnHTML("#submission-main-content", func(e *colly.HTMLElement) {
 		if valid {
 			// content has already been found
 			return
@@ -349,7 +349,7 @@ func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *Su
 
 		// Try using the data-time attribute first
 		timeFromAttr, err := goutils.EpochStringToTime(
-			e.ChildAttr(".submission-id-container span.popup_date", "data-time"))
+			e.ChildAttr(".submission-details span.popup_date", "data-time"))
 		if err != nil {
 			logging.Warnf("Error parsing date for submission content (%d): %s", entry.ID(), err)
 			valid = false
@@ -357,7 +357,7 @@ func (fc *FurAffinityCollector) GetSubmissionContent(entry *SubmissionEntry) *Su
 		}
 		content.date = timeFromAttr
 
-		descriptionElement := e.DOM.Find(".submission-description").First()
+		descriptionElement := e.DOM.Find(".submission-description-text").First()
 		if descriptionElement.Length() == 0 {
 			logging.Warnf("No description element found for submission %d", entry.ID())
 			valid = false
