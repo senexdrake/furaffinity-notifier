@@ -25,6 +25,8 @@ type ThumbnailUrl struct {
 const ThumbnailSizeLarge = 600
 const ThumbnailSizeSmall = 300
 
+var ErrProfileLinkNil = errors.New("profile link is nil")
+
 var thumbnailUrlSizeRegex = regexp.MustCompile("(.*@)(\\d*)(-.*)")
 
 // profileUrlUsernameRegex matches the username portion of a profile URL.
@@ -69,17 +71,17 @@ func (tu *ThumbnailUrl) ToUrl() *url.URL {
 
 func UsernameFromProfileLink(link *url.URL) (string, error) {
 	if link == nil {
-		return "", errors.New("profile link is nil")
+		return "", ErrProfileLinkNil
 	}
 	matches := profileUrlUsernameRegex.FindStringSubmatch(link.Path)
 	if len(matches) > 1 {
 		username := matches[1]
 		if username == "" {
-			return "", errors.New(fmt.Sprintf("empty username in profile link '%s'", link))
+			return "", fmt.Errorf("empty username in profile link '%s'", link)
 		}
 		return username, nil
 	}
-	return "", errors.New(fmt.Sprintf("no username found in profile link '%s'", link))
+	return "", fmt.Errorf("no username found in profile link '%s'", link)
 }
 
 func TagListToSet(rawTagList string) dsext.Set[string] {
@@ -95,8 +97,7 @@ func ParseDateFromString(entryType entries.EntryType, rawDate string, location *
 		layoutsFormatted := strings.Join(
 			dsext.Map(layoutsToTry, func(s string) string { return fmt.Sprintf("'%s'", s) }),
 			", ")
-		msg := fmt.Sprintf("error parsing date: tried layouts [%s], got value '%s'", layoutsFormatted, rawDate)
-		return time.Time{}, errors.New(msg)
+		return time.Time{}, fmt.Errorf("error parsing date: tried layouts [%s], got value '%s'", layoutsFormatted, rawDate)
 	}
 	return date, nil
 }

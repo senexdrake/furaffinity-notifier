@@ -20,6 +20,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var ErrNoUpdateChatId = errors.New("no chat id in update")
+
 var botInstance *bot.Bot
 var botContext context.Context
 var privacyPolicyCommand = createPrivacyPolicyCommand()
@@ -397,7 +399,7 @@ func chatIdFromUpdate(update *models.Update) (int64, error) {
 	}
 
 	if chatId == 0 {
-		return 0, errors.New("could not determine chat ID")
+		return 0, ErrNoUpdateChatId
 	}
 	return chatId, nil
 }

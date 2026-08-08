@@ -59,6 +59,10 @@ type (
 	}
 )
 
+var ErrParseSubmissionComment = errors.New("error parsing submission comment")
+var ErrParseJournal = errors.New("error parsing journal")
+var ErrJournalLinkNil = errors.New("journal link is nil")
+
 const otherMessagesPath = "/msg/others/"
 
 func (ce *CommentEntry) EntryType() entries.EntryType { return ce.entryType }
@@ -367,7 +371,7 @@ func (fc *FurAffinityCollector) parseCommentEntry(entryType entries.EntryType, e
 	}
 
 	if parseError {
-		return nil, errors.New("error parsing submission comment")
+		return nil, ErrParseSubmissionComment
 	}
 
 	return &comment, nil
@@ -405,7 +409,7 @@ func (fc *FurAffinityCollector) parseJournalEntry(entryElement *colly.HTMLElemen
 	}
 
 	if parseError {
-		return nil, errors.New("error parsing journal")
+		return nil, ErrParseJournal
 	}
 
 	return &journal, nil
@@ -413,7 +417,7 @@ func (fc *FurAffinityCollector) parseJournalEntry(entryElement *colly.HTMLElemen
 
 func journalIdFromLink(link *url.URL) (uint, error) {
 	if link == nil {
-		return 0, errors.New("journal link is nil")
+		return 0, ErrJournalLinkNil
 	}
 	matches := journalIdRegex.FindStringSubmatch(link.Path)
 	if len(matches) > 1 {
@@ -421,9 +425,9 @@ func journalIdFromLink(link *url.URL) (uint, error) {
 		if err == nil {
 			return uint(id), nil
 		}
-		return 0, errors.New(fmt.Sprintf("error parsing journal ID '%s': %s", matches[1], err))
+		return 0, fmt.Errorf("error parsing journal ID '%s': %s", matches[1], err)
 	}
-	return 0, errors.New(fmt.Sprintf("no journal ID found in link '%s'", link.String()))
+	return 0, fmt.Errorf("no journal ID found in link '%s'", link.String())
 
 }
 
@@ -446,13 +450,13 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 			// This link is the user
 			link, err := FurAffinityUrl().Parse(e.Attr("href"))
 			if err != nil {
-				parseError = errors.New(fmt.Sprintf("error parsing user link: %s", err))
+				parseError = fmt.Errorf("error parsing user link: %s", err)
 				return true
 			}
 
 			username, err := tools.UsernameFromProfileLink(link)
 			if err != nil {
-				parseError = errors.New(fmt.Sprintf("error parsing username from profile link: %s", err))
+				parseError = fmt.Errorf("error parsing username from profile link: %s", err)
 				return true
 			}
 
@@ -465,7 +469,7 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 			// This is the title
 			link, err := FurAffinityUrl().Parse(e.Attr("href"))
 			if err != nil {
-				parseError = errors.New("error parsing title link")
+				parseError = fmt.Errorf("error parsing title link: %s", err)
 				return true
 			}
 			msg.link = link
@@ -488,7 +492,7 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 		dateString := trimHtmlText(e.Text)
 		date, err := tools.ParseDateFromString(entryType, dateString, fc.location())
 		if err != nil {
-			parseError = errors.New(fmt.Sprintf("error parsing entry date: %s", err))
+			parseError = fmt.Errorf("error parsing entry date: %s", err)
 			return
 		}
 		msg.date = date
@@ -511,7 +515,7 @@ func (fc *FurAffinityCollector) parseMessage(entryType entries.EntryType, entryE
 		}
 
 		if !ratingFound {
-			parseError = errors.New(fmt.Sprintf("error parsing journal rating for journal '%s'", msg.title))
+			parseError = fmt.Errorf("error parsing journal rating for journal '%s'", msg.title)
 		}
 	}
 

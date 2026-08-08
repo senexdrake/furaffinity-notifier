@@ -82,7 +82,8 @@ const (
 const submissionsPath = "/msg/submissions/new@72/"
 
 var (
-	submissionIdRegex = regexp.MustCompile(".*/view/(\\d*)/*")
+	ErrSubmissionEmptyId = errors.New("submission id is empty")
+	submissionIdRegex    = regexp.MustCompile(".*/view/(\\d*)/*")
 )
 
 func (se *SubmissionEntry) EntryType() entries.EntryType {
@@ -434,7 +435,7 @@ func (fc *FurAffinityCollector) parseSubmission(entryElement *colly.HTMLElement,
 	})
 
 	if entry.ID() == 0 {
-		return nil, errors.New("submission with empty ID is invalid")
+		return nil, ErrSubmissionEmptyId
 	}
 
 	imgElement := entryElement.DOM.Find("img").First()

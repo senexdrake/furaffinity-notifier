@@ -51,6 +51,8 @@ type (
 	}
 )
 
+var ErrInvalidEntryType = errors.New("invalid entry type")
+
 func (u *User) EntryTypeStatus() map[entries.EntryType]UserEntryType {
 	entryTypes := u.EntryTypes
 	if entryTypes == nil {
@@ -149,7 +151,7 @@ func NewUserEntryType(userId uint, entryType entries.EntryType) *UserEntryType {
 
 func (uet *UserEntryType) BeforeSave(tx *gorm.DB) error {
 	if uet.EntryType == entries.EntryTypeInvalid {
-		return errors.New("invalid entry type")
+		return ErrInvalidEntryType
 	}
 	return nil
 }
